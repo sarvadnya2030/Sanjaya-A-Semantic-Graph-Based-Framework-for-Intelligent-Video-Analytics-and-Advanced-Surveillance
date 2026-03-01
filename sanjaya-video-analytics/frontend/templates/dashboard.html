@@ -141,27 +141,8 @@
 <!-- ── Status Banner ── -->
 <div id="uploadStatus"></div>
 
-<!-- ── Upload panel (shown before video selected) ── -->
-<div id="uploadPanel" style="max-width:600px;margin:40px auto;padding:0 20px;">
-  <div class="card-dark" style="text-align:center;">
-    <div style="font-size:48px;margin-bottom:12px;">🎥</div>
-    <h2 style="font-size:22px;color:#e7ecff;text-transform:none;letter-spacing:0;">Sanjaya Video Analytics</h2>
-    <p style="color:#9fb0d7;margin-bottom:20px;">Upload surveillance footage to generate intelligence insights using CV + VLM + Knowledge Graph</p>
-    <div class="dropzone" id="dropzone" onclick="document.getElementById('videoFile').click()"
-         ondragover="event.preventDefault();this.classList.add('active')"
-         ondragleave="this.classList.remove('active')"
-         ondrop="handleDrop(event)">
-      <div style="font-size:32px;margin-bottom:8px;">📂</div>
-      <div style="font-weight:600;">Drop video here or click to browse</div>
-      <div style="font-size:12px;margin-top:6px;">MP4, AVI, MOV · up to 2GB</div>
-    </div>
-    <div id="selectedFilename" style="color:#6ea8fe;font-size:13px;margin-top:10px;"></div>
-    <button class="btn-dark-primary" style="margin-top:16px;padding:10px 28px;" onclick="uploadToBackend()">⚡ Analyze with Sanjaya</button>
-  </div>
-</div>
-
-<!-- ── Main Dashboard (hidden until video selected) ── -->
-<div id="mainDash" style="display:none;">
+<!-- ── Main Dashboard ── -->
+<div id="mainDash">
   <div class="layout">
 
     <!-- ── LEFT PANE ── -->
@@ -394,25 +375,19 @@ async function uploadToBackend() {
 
     showStatus(`Done — ${data.salient_frames?.length || 0} salient frames · risk: ${data.insights?.overall_risk || 'low'}`, 'success');
 
-    // Show dashboard
-    document.getElementById('uploadPanel').style.display = 'none';
-    document.getElementById('mainDash').style.display = 'block';
-
-    // Posture summary
     if (data.insights?.posture_summary) displayPostureSummary(data.insights.posture_summary);
-
-    // Load sessions
     await loadSessions();
 
-    // Trigger stats refresh from local API (reading backend json_outputs)
-    const firstVideo = file.name;
-    await loadStats(firstVideo);
-    await loadFrames(firstVideo);
-    await loadHeatmap(firstVideo);
-    await loadGraph(firstVideo);
-
-    // Refresh video dropdown
+    // Refresh dropdown then auto-select the just-uploaded video
     await listVideos();
+    const sel = document.getElementById('dashVideo');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === file.name) { sel.selectedIndex = i; break; }
+    }
+    await loadStats(file.name);
+    await loadFrames(file.name);
+    await loadHeatmap(file.name);
+    await loadGraph(file.name);
 
   } catch(e) {
     showStatus(e.message, 'error');
@@ -527,14 +502,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSessions();
   checkTelegramStatus();
   setInterval(checkTelegramStatus, 30000);
-
-  // Show main dashboard if videos exist
-  const r = await fetch('/api/videos').catch(()=>({json:()=>({videos:[]})}));
-  const d = await r.json().catch(()=>({videos:[]}));
-  if ((d.videos||[]).length > 0) {
-    document.getElementById('uploadPanel').style.display = 'none';
-    document.getElementById('mainDash').style.display = 'block';
-  }
 });
 </script>
 
