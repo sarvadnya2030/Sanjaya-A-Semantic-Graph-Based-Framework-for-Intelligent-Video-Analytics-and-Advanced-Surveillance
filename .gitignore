@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+.env
+
+# Model weights (download separately via Ollama/Ultralytics)
+*.pt
+*.onnx
+*.pth
+*.bin
+*.safetensors
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Generated outputs (runtime artifacts)
+sanjaya-video-analytics/backend/uploads/
+sanjaya-video-analytics/backend/static/frames/
+sanjaya-video-analytics/backend/static/videos/
+sanjaya-video-analytics/backend/json_outputs/
+sanjaya-video-analytics/backend/__pycache__/
+
+# Logs
+*.log
+backend.log
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets / Credentials
+.env
+*.secret

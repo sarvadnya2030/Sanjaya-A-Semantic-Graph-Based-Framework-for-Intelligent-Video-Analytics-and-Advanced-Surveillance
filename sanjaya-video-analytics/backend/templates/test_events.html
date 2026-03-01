@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Events Loading</title>
+</head>
+<body>
+    <h1>Event Insights Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        console.log('Starting test...');
+        
+        fetch('/json_outputs/events.json')
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(events => {
+                console.log('Loaded events:', events.length);
+                
+                const stats = {
+                    total: events.length,
+                    stationary: events.filter(e => e.motion_state === 'STATIONARY').length,
+                    walking: events.filter(e => e.motion_state === 'WALKING').length,
+                    moving: events.filter(e => e.motion_state === 'MOVING').length,
+                    loitering: events.filter(e => e.motion_state === 'LOITERING').length
+                };
+                
+                document.getElementById('results').innerHTML = `
+                    <h2>✅ Successfully loaded ${stats.total} events!</h2>
+                    <ul>
+                        <li>Stationary: ${stats.stationary}</li>
+                        <li>Walking: ${stats.walking}</li>
+                        <li>Moving: ${stats.moving}</li>
+                        <li>Loitering: ${stats.loitering}</li>
+                    </ul>
+                `;
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                document.getElementById('results').innerHTML = `<h2 style="color:red">❌ Error: ${err.message}</h2>`;
+            });
+    </script>
+</body>
+</html>

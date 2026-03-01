@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanjaya Analytics</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">
+      <h1>🎥 SANJAYA</h1>
+      <span>Video Intelligence Platform</span>
+    </div>
+    <div class="nav-actions">
+      <input id="videoFile" type="file" accept="video/*" hidden onchange="handleFileSelected()">
+      <button id="uploadBtn" class="btn ghost" onclick="document.getElementById('videoFile').click()">📤 Upload Video</button>
+      <button id="analyzeBtn" class="btn primary" onclick="uploadVideo()">⚡ Analyze</button>
+    </div>
+  </nav>
+
+  <div id="uploadStatus" class="status-banner"></div>
+
+  <div class="layout">
+    <!-- Left -->
+    <aside class="pane left">
+      <div class="card">
+        <h2>📊 Analytics Overview</h2>
+        <div class="stats-grid">
+          <div class="stat blue"><div>🎬</div><p id="totalFrames">0</p><span>Frames</span></div>
+          <div class="stat green"><div>👥</div><p id="totalPersons">0</p><span>Persons</span></div>
+          <div class="stat cyan"><div>📦</div><p id="totalObjects">0</p><span>Items</span></div>
+          <div class="stat orange"><div>⚡</div><p id="totalEvents">0</p><span>Events</span></div>
+          <div class="stat red"><div>⚠️</div><p id="riskLevel">-</p><span>Risk</span></div>
+          <div class="stat purple"><div>🔥</div><p id="salientCount">0</p><span>Salient</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📊 Motion Analysis</h2>
+        <canvas id="motionChart" width="100" height="60"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>📋 Event Distribution</h2>
+        <canvas id="eventChart" width="100" height="80"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>🗺️ Zone Activity Heatmap</h2>
+        <canvas id="zoneChart" width="100" height="80"></canvas>
+      </div>
+    </aside>
+
+    <!-- Center -->
+    <main class="pane center">
+      <div class="card">
+        <h2>🖼️ Salient Frames</h2>
+        <div class="frames">
+          <div class="frame">
+            <span class="badge">Frame 1</span>
+            <img id="frame0" alt="frame0">
+            <div class="frame-meta" id="frame0-info">Waiting for upload…</div>
+            <div class="frame-objects" id="frame0-objects"></div>
+          </div>
+          <div class="frame">
+            <span class="badge">Frame 2</span>
+            <img id="frame1" alt="frame1">
+            <div class="frame-meta" id="frame1-info">Waiting for upload…</div>
+            <div class="frame-objects" id="frame1-objects"></div>
+          </div>
+          <div class="frame">
+            <span class="badge">Frame 3</span>
+            <img id="frame2" alt="frame2">
+            <div class="frame-meta" id="frame2-info">Waiting for upload…</div>
+            <div class="frame-objects" id="frame2-objects"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>⏱️ Event Timeline</h2>
+        <canvas id="timelineChart" width="100" height="50"></canvas>
+        <div id="eventStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:15px;">
+          <div style="text-align:center;padding:10px;background:#f7fafc;border-radius:5px;">
+            <div style="font-size:24px;font-weight:bold;color:#667eea;" id="statStationary">0</div>
+            <div style="font-size:12px;color:#718096;">Stationary</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:#f7fafc;border-radius:5px;">
+            <div style="font-size:24px;font-weight:bold;color:#48bb78;" id="statWalking">0</div>
+            <div style="font-size:12px;color:#718096;">Walking</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:#f7fafc;border-radius:5px;">
+            <div style="font-size:24px;font-weight:bold;color:#f6ad55;" id="statMoving">0</div>
+            <div style="font-size:12px;color:#718096;">Moving</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:#f7fafc;border-radius:5px;">
+            <div style="font-size:24px;font-weight:bold;color:#e53e3e;" id="statLoitering">0</div>
+            <div style="font-size:12px;color:#718096;">Loitering</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📊 Event Insights & Analytics</h2>
+        
+        <!-- Summary Cards -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+          <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:15px;border-radius:8px;color:white;">
+            <div style="font-size:11px;opacity:0.9;margin-bottom:5px;">TOTAL EVENTS</div>
+            <div style="font-size:28px;font-weight:bold;" id="insightTotalEvents">0</div>
+            <div style="font-size:11px;opacity:0.8;margin-top:5px;" id="insightTimeRange">-</div>
+          </div>
+          <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);padding:15px;border-radius:8px;color:white;">
+            <div style="font-size:11px;opacity:0.9;margin-bottom:5px;">HIGH PRIORITY</div>
+            <div style="font-size:28px;font-weight:bold;" id="insightHighPriority">0</div>
+            <div style="font-size:11px;opacity:0.8;margin-top:5px;" id="insightHighPriorityPct">0% of total</div>
+          </div>
+          <div style="background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);padding:15px;border-radius:8px;color:white;">
+            <div style="font-size:11px;opacity:0.9;margin-bottom:5px;">UNIQUE TRACKS</div>
+            <div style="font-size:28px;font-weight:bold;" id="insightUniqueTracks">0</div>
+            <div style="font-size:11px;opacity:0.8;margin-top:5px;" id="insightAvgSpeed">-</div>
+          </div>
+        </div>
+
+        <!-- Motion Patterns -->
+        <div style="background:#f7fafc;padding:15px;border-radius:8px;margin-bottom:15px;">
+          <h3 style="font-size:14px;color:#2d3748;margin:0 0 12px 0;font-weight:600;">🚶 Motion State Distribution</h3>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+            <div style="background:white;padding:12px;border-radius:6px;border-left:3px solid #667eea;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;color:#4a5568;">⏸️ Stationary</span>
+                <span style="font-size:16px;font-weight:bold;color:#667eea;" id="motionStationary">0</span>
+              </div>
+              <div style="font-size:11px;color:#718096;margin-top:4px;" id="motionStationaryPct">0%</div>
+            </div>
+            <div style="background:white;padding:12px;border-radius:6px;border-left:3px solid #48bb78;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;color:#4a5568;">🚶 Walking</span>
+                <span style="font-size:16px;font-weight:bold;color:#48bb78;" id="motionWalking">0</span>
+              </div>
+              <div style="font-size:11px;color:#718096;margin-top:4px;" id="motionWalkingPct">0%</div>
+            </div>
+            <div style="background:white;padding:12px;border-radius:6px;border-left:3px solid #f6ad55;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;color:#4a5568;">🏃 Moving</span>
+                <span style="font-size:16px;font-weight:bold;color:#f6ad55;" id="motionMoving">0</span>
+              </div>
+              <div style="font-size:11px;color:#718096;margin-top:4px;" id="motionMovingPct">0%</div>
+            </div>
+            <div style="background:white;padding:12px;border-radius:6px;border-left:3px solid #e53e3e;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;color:#4a5568;">⚠️ Loitering</span>
+                <span style="font-size:16px;font-weight:bold;color:#e53e3e;" id="motionLoitering">0</span>
+              </div>
+              <div style="font-size:11px;color:#718096;margin-top:4px;" id="motionLoiteringPct">0%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Priority & Speed Analysis -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;">
+          <div style="background:#f7fafc;padding:15px;border-radius:8px;">
+            <h3 style="font-size:14px;color:#2d3748;margin:0 0 12px 0;font-weight:600;">🎯 Priority Breakdown</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:#718096;">🔴 High</span>
+                <span style="font-weight:600;color:#e53e3e;" id="priorityHigh">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:#718096;">🟡 Medium</span>
+                <span style="font-weight:600;color:#f6ad55;" id="priorityMedium">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:#718096;">🟢 Low</span>
+                <span style="font-weight:600;color:#48bb78;" id="priorityLow">0</span>
+              </div>
+            </div>
+          </div>
+          <div style="background:#f7fafc;padding:15px;border-radius:8px;">
+            <h3 style="font-size:14px;color:#2d3748;margin:0 0 12px 0;font-weight:600;">⚡ Speed Analysis</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:#718096;">Average Speed</span>
+                <span style="font-weight:600;color:#667eea;" id="speedAvg">0 px/s</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:#718096;">Max Speed</span>
+                <span style="font-weight:600;color:#e53e3e;" id="speedMax">0 px/s</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:#718096;">Min Speed</span>
+                <span style="font-weight:600;color:#48bb78;" id="speedMin">0 px/s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone Hotspots -->
+        <div style="background:#f7fafc;padding:15px;border-radius:8px;">
+          <h3 style="font-size:14px;color:#2d3748;margin:0 0 12px 0;font-weight:600;">🗺️ Zone Activity Hotspots</h3>
+          <div id="zoneHotspots" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+            <div style="text-align:center;padding:8px;background:white;border-radius:4px;font-size:11px;color:#718096;">No data</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🤖 VLM Intelligence Analysis</h2>
+        <div class="tabs">
+          <button class="tab active" data-tab="surveillance" onclick="switchIntelTab('surveillance')">📹 Surveillance</button>
+          <button class="tab" data-tab="behavioral" onclick="switchIntelTab('behavioral')">🧠 Behavioral</button>
+          <button class="tab" data-tab="knowledge" onclick="switchIntelTab('knowledge')">🕸️ Knowledge Graph</button>
+        </div>
+        <div class="tab-content">
+          <div id="surveillance-panel" class="panel active">
+            <div id="surveillanceText" class="intel-box">Upload video for surveillance analysis</div>
+          </div>
+          <div id="behavioral-panel" class="panel">
+            <div id="behavioralText" class="intel-box">Behavioral insights will appear here</div>
+          </div>
+          <div id="knowledge-panel" class="panel">
+            <div id="kgContent" class="intel-box">Knowledge graph will be generated</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right -->
+    <aside class="pane right">
+      <div class="card rag">
+        <h2>🔍 Natural Language Query</h2>
+        <p class="sub">Ask questions about your surveillance footage</p>
+        <textarea id="ragQuery" rows="3" placeholder="Who was running?&#10;What happened in zone Z5?&#10;Describe suspicious behavior..."></textarea>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+          <button class="btn primary" style="flex: 1;" onclick="performRAGSearch()">🔎 Ask</button>
+          <button class="btn ghost" onclick="rebuildRAG()">🔄 Rebuild Index</button>
+        </div>
+
+        <div class="chips">
+          <button onclick="setQuery('Who was running in the video?')">Who was running?</button>
+          <button onclick="setQuery('What happened in zone Z5?')">Zone activity</button>
+          <button onclick="setQuery('Describe suspicious behavior')">Suspicious</button>
+          <button onclick="setQuery('What objects were detected?')">Objects</button>
+        </div>
+
+        <div id="ragResults" class="rag-box">Ask a question to get AI insights</div>
+
+        <div class="history">
+          <h3>📜 Recent Queries</h3>
+          <div id="queryHistory" class="history-list">No queries yet</div>
+        </div>
+      </div>
+
+      <!-- GraphRAG Component -->
+      <div class="card">
+        <div class="card-header">
+          <h3>🧠 GraphRAG - Chain of Thought Reasoning</h3>
+        </div>
+        <div class="card-body">
+          <div class="query-section">
+            <input type="text" id="graph-query" placeholder="Ask a complex reasoning question..." 
+                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
+            
+            <div style="margin-bottom: 10px;">
+              <label style="margin-right: 20px;">
+                <input type="radio" name="rag-mode" value="graph" checked> GraphRAG
+              </label>
+              <label style="margin-right: 20px;">
+                <input type="radio" name="rag-mode" value="json"> JSON RAG
+              </label>
+              <label>
+                <input type="radio" name="rag-mode" value="hybrid"> Hybrid (Both)
+              </label>
+            </div>
+            
+            <button onclick="askGraphQuestion()" class="btn-primary" style="padding: 10px 20px;">
+              🔍 Reason with GraphRAG
+            </button>
+          </div>
+          
+          <!-- Chain of Thought Display -->
+          <div id="cot-display" style="margin-top: 20px; display: none;">
+            <h4 style="color: #667eea;">💭 Chain of Thought:</h4>
+            <div id="cot-steps"></div>
+          </div>
+          
+          <!-- Answer Display -->
+          <div id="graph-answer-display" style="margin-top: 20px; display: none;">
+            <h4 style="color: #48bb78;">✅ Answer:</h4>
+            <div id="graph-answer-text" style="padding: 15px; background: #f7fafc; border-radius: 8px;"></div>
+            
+            <div id="reasoning-path" style="margin-top: 15px;">
+              <h5>🔗 Reasoning Path:</h5>
+              <div id="path-text" style="font-family: monospace; color: #4a5568;"></div>
+            </div>
+            
+            <div id="graph-evidence" style="margin-top: 15px;">
+              <h5>📊 Evidence from Graph:</h5>
+              <div id="evidence-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telegram Status Component -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📱 Telegram Notifications</h3>
+        </div>
+        <div class="card-body">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <p>Event summaries and alerts are sent to your Telegram bot</p>
+              <p style="color: #718096; font-size: 14px;">Configure bot token in environment variables</p>
+            </div>
+            <div id="telegram-status" style="padding: 10px 20px; border-radius: 20px; background: #48bb78; color: white;">
+              ✅ Active
+            </div>
+          </div>
+          
+          <div id="recent-notifications" style="margin-top: 20px;">
+            <h5>📬 Recent Notifications:</h5>
+            <div id="notification-list" style="max-height: 200px; overflow-y: auto;">
+              <p style="color: #a0aec0;">No notifications yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+    async function askGraphQuestion() {
+      const query = document.getElementById('graph-query').value.trim();
+      const mode = document.querySelector('input[name="rag-mode"]:checked').value;
+      
+      if (!query) {
+          alert('Please enter a question');
+          return;
+      }
+      
+      const endpoint = mode === 'graph' ? '/rag/graph' : 
+                       mode === 'hybrid' ? '/rag/hybrid' : '/rag/search';
+      
+      try {
+          // Show loading
+          document.getElementById('graph-answer-display').style.display = 'block';
+          document.getElementById('graph-answer-text').innerHTML = '🔄 Reasoning...';
+          
+          const response = await fetch(`${endpoint}?q=${encodeURIComponent(query)}`);
+          const data = await response.json();
+          
+          // Display Chain of Thought
+          if (data.chain_of_thought && data.chain_of_thought.length > 0) {
+              displayChainOfThought(data.chain_of_thought);
+          } else {
+              document.getElementById('cot-display').style.display = 'none';
+          }
+          
+          // Display Answer (Clean, no confidence/evidence)
+          document.getElementById('graph-answer-text').innerHTML = `
+              <div style="font-size: 16px; line-height: 1.6; color: #2d3748;">${data.answer}</div>
+          `;
+          
+          // Hide technical details (reasoning path, evidence) for cleaner UI
+          
+      } catch (error) {
+          console.error('GraphRAG error:', error);
+          document.getElementById('graph-answer-text').innerHTML = `
+              <div style="color: #e53e3e;">❌ Error: ${error.message}</div>
+          `;
+      }
+    }
+
+    function displayChainOfThought(steps) {
+      const cotDisplay = document.getElementById('cot-display');
+      const cotSteps = document.getElementById('cot-steps');
+      
+      let html = '';
+      steps.forEach((step, idx) => {
+          html += `
+              <div style="margin: 15px 0; padding: 15px; background: #f7fafc; border-left: 4px solid #667eea; border-radius: 4px;">
+                  <div style="font-weight: bold; color: #667eea; margin-bottom: 8px;">
+                      Step ${step.step}: ${step.reasoning}
+                  </div>
+                  <ul style="margin: 5px 0; padding-left: 20px; color: #4a5568;">
+                      ${step.findings.map(f => `<li>${f}</li>`).join('')}
+                  </ul>
+              </div>
+          `;
+      });
+      
+      cotSteps.innerHTML = html;
+      cotDisplay.style.display = 'block';
+    }
+
+    async function rebuildRAG() {
+      try {
+        showStatus('🔨 Rebuilding RAG index...', 'info');
+        
+        const response = await fetch('/rag/rebuild', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          showStatus(`✅ RAG index rebuilt: ${data.document_count} documents`, 'success');
+        } else {
+          showStatus('❌ Rebuild failed: ' + data.message, 'error');
+        }
+      } catch (error) {
+        showStatus('❌ Rebuild error: ' + error.message, 'error');
+      }
+    }
+    
+    async function checkRAGStatus() {
+      try {
+        const response = await fetch('/rag/status');
+        const data = await response.json();
+        
+        console.log('[RAG Status]', data);
+        
+        if (!data.index_built || data.document_count === 0) {
+          console.warn('⚠️ RAG index not ready!');
+        }
+      } catch (error) {
+        console.error('RAG status check failed:', error);
+      }
+    }
+    
+    // Check RAG status on page load
+    checkRAGStatus();
+
+    // Poll for Telegram notification status
+    async function checkTelegramStatus() {
+      try {
+          const response = await fetch('/api/telegram/status');
+          const data = await response.json();
+          
+          const statusEl = document.getElementById('telegram-status');
+          if (data.active) {
+              statusEl.textContent = '✅ Active';
+              statusEl.style.background = '#48bb78';
+          } else {
+              statusEl.textContent = '❌ Inactive';
+              statusEl.style.background = '#f56565';
+          }
+      } catch (error) {
+          console.error('Telegram status check failed:', error);
+      }
+    }
+
+    // Check status on load
+    checkTelegramStatus();
+    setInterval(checkTelegramStatus, 30000); // Every 30s
+  </script>
+
+  <style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        padding: 20px;
+    }
+
+    .card-header h3 {
+        margin: 0;
+        color: #2d3748;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .btn-primary:hover {
+        background: #5a67d8;
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,360 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>SANJAYA - Video Analytics</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { 
+      font-family: 'Segoe UI', system-ui, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 2rem;
+    }
+    h1 { 
+      color: #667eea; 
+      font-size: 2.5rem; 
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 2rem;
+      font-size: 1.1rem;
+    }
+    .upload-card {
+      border: 2px dashed #667eea;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      background: #f8f9ff;
+      margin-bottom: 2rem;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .file-label {
+      display: inline-block;
+      padding: 1rem 2rem;
+      background: #667eea;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .file-label:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+    }
+    button {
+      padding: 1rem 2rem;
+      background: #764ba2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 1rem;
+    }
+    button:hover {
+      background: #653a8e;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(118,75,162,0.4);
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    #status {
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+      font-weight: 600;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .processing { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .result-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      background: #fafafa;
+    }
+    .result-card h3 {
+      color: #667eea;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+    }
+    .result-card p {
+      margin: 0.5rem 0;
+      line-height: 1.6;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin: 0.25rem;
+    }
+    .badge-objects { background: #d1ecf1; color: #0c5460; }
+    .badge-persons { background: #d4edda; color: #155724; }
+    pre {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    details {
+      margin-top: 1rem;
+      cursor: pointer;
+    }
+    summary {
+      font-weight: 600;
+      color: #667eea;
+      padding: 0.5rem;
+      background: #f0f4ff;
+      border-radius: 6px;
+    }
+    .filename {
+      color: #999;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+    .card {
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      margin: 1rem 0;
+      background: #fafafa;
+      padding: 1.5rem;
+    }
+    .card-header {
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 1rem;
+    }
+    .form-label {
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: #333;
+    }
+    .form-select, .form-control {
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      padding: 0.75rem;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+    .form-select:focus, .form-control:focus {
+      border-color: #667eea;
+      outline: none;
+    }
+    .btn-primary {
+      background: #667eea;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SANJAYA</h1>
+    <p class="subtitle">Video Analytics • Frame Extraction • VLM Analysis • Knowledge Graph</p>
+
+    <!-- Toolbar -->
+    <section id="toolbar" class="card" style="padding:1rem;">
+      <div class="card-header">Dashboard Controls</div>
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">Video</label>
+          <select id="dashVideo" class="form-select"><option value="">Select video…</option></select>
+        </div>
+        <div class="col-md-4" style="margin-top:1.9rem;">
+          <button id="btnRefresh" class="btn btn-primary" style="margin-right:.5rem;"><i class="bi bi-arrow-repeat"></i> Refresh</button>
+          <button id="btnExport" class="btn btn-primary"><i class="bi bi-filetype-pdf"></i> Export Report</button>
+        </div>
+        <div class="col-md-4" style="text-align:right; margin-top:2.1rem;">
+          <span class="badge" style="background:#e7f1ff;color:#2c5bdc;">Hackathon Edition</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section id="stats" class="mt-3">
+      <div class="row g-3" id="statCards">
+        <div class="col-md-2"><div class="card kpi"><div class="card-body"><div class="kpi-title">Persons</div><div id="kpiPersons" class="kpi-value">0</div></div></div></div>
+        <div class="col-md-2"><div class="card kpi"><div class="card-body"><div class="kpi-title">Objects</div><div id="kpiObjects" class="kpi-value">0</div></div></div></div>
+        <div class="col-md-2"><div class="card kpi"><div class="card-body"><div class="kpi-title">Object Classes</div><div id="kpiObjClasses" class="kpi-value">0</div></div></div></div>
+        <div class="col-md-2"><div class="card kpi"><div class="card-body"><div class="kpi-title">Activities</div><div id="kpiActivities" class="kpi-value">0</div></div></div></div>
+        <div class="col-md-2"><div class="card kpi"><div class="card-body"><div class="kpi-title">Frames</div><div id="kpiFrames" class="kpi-value">0</div></div></div></div>
+        <div class="col-md-2"><div class="card kpi"><div class="card-body"><div class="kpi-title">Top Object</div><div id="kpiTopObject" class="kpi-value">–</div></div></div></div>
+      </div>
+    </section>
+
+    <!-- Upload & Pipeline -->
+    <form id="form" class="upload-card" style="margin-top:16px;">
+      <label for="video-input" class="file-label">📹 Choose Video File</label>
+      <input type="file" id="video-input" name="file" accept="video/*" required />
+      <p class="filename" id="filename"></p>
+      <button type="submit">🚀 Run Pipeline</button>
+    </form>
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <!-- Frame Viewer -->
+    <section id="frames" class="mt-4">
+      <div class="card">
+        <div class="card-header">Frame Viewer (start / middle / end)</div>
+        <div class="card-body">
+          <div class="row g-3" id="frameRow">
+            <div class="col-md-4"><canvas id="frameCanvas0" class="frame-canvas"></canvas></div>
+            <div class="col-md-4"><canvas id="frameCanvas1" class="frame-canvas"></canvas></div>
+            <div class="col-md-4"><canvas id="frameCanvas2" class="frame-canvas"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Heatmap -->
+    <section id="heatmap" class="mt-4">
+      <div class="card">
+        <div class="card-header">Activity Heatmap (3x3 zones)</div>
+        <div class="card-body">
+          <canvas id="heatmapCanvas" class="heatmap-canvas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Graph Viz -->
+    <section id="graphviz" class="mt-4">
+      <div class="card">
+        <div class="card-header">Knowledge Graph</div>
+        <div class="card-body">
+          <div id="cy" class="graph-canvas"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RAG -->
+    <section id="graph-rag" style="margin-top:24px;">
+      <div class="card">
+        <div class="card-header">Graph RAG: Ask Questions</div>
+        <div class="card-body">
+          <div class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label">Video</label>
+              <select id="ragVideo" class="form-select">
+                <option value="">Select video…</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Question</label>
+              <input id="ragQuestion" class="form-control" placeholder="e.g., What are the objects?">
+              <div class="chips mt-2" id="promptChips">
+                <span class="chip" data-prompt="What are the objects?">Objects</span>
+                <span class="chip" data-prompt="Who interacted with the laptop?">Interactions</span>
+                <span class="chip" data-prompt="What activities are happening?">Activities</span>
+                <span class="chip" data-prompt="Which zones are most active?">Zones</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Mode</label>
+              <select id="ragMode" class="form-select">
+                <option value="hybrid">Hybrid (Graph + JSON)</option>
+                <option value="json" selected>JSON-only (Fallback)</option>
+              </select>
+              <button id="ragAskBtn" class="btn btn-primary" style="margin-top:8px;"><i class="bi bi-chat-dots"></i> Ask</button>
+              <span id="ragThinking" class="typing"></span>
+            </div>
+          </div>
+          <hr>
+          <div id="ragResult" style="white-space:pre-wrap;"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const form = document.getElementById('form');
+    const fileInput = document.getElementById('video-input');
+    const filenameEl = document.getElementById('filename');
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) { filenameEl.textContent = `Selected: ${file.name}`; }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.className = 'processing';
+      statusEl.textContent = '⏳ Processing video... Extracting frames → VLM analysis → Neo4j';
+      resultsEl.innerHTML = '';
+      const fd = new FormData(form);
+      try {
+        const res = await fetch('/pipeline/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        statusEl.className = 'success';
+        statusEl.textContent = `✅ Success! Analyzed ${data.frames_analyzed} frames from "${data.video_name}"`;
+        // Render results
+        data.results.forEach(r => {
+          const a = r.analysis;
+          const card = document.createElement('div');
+          card.className = 'result-card';
+          card.innerHTML = `
+            <h3>${r.frame.label.toUpperCase()} Frame (ID: ${r.frame.frame_id})</h3>
+            <p><strong>Scene:</strong> ${a.natural_description || a.scene_description || 'N/A'}</p>
+            <div>
+              <span class="badge badge-objects">📦 ${a.objects?.length || 0} Objects</span>
+              <span class="badge badge-persons">👤 ${a.persons?.length || 0} Persons</span>
+            </div>
+            <p style="margin-top:1rem"><strong>JSON:</strong> <code>${r.json_path}</code></p>
+            <details><summary>View Full JSON</summary><pre>${JSON.stringify(a, null, 2)}</pre></details>
+          `;
+          resultsEl.appendChild(card);
+        });
+        form.reset(); filenameEl.textContent = '';
+        // Trigger dashboard refresh with the uploaded video name
+        if (window.refreshDash) { window.refreshDash(data.video_name || ''); }
+      } catch(err) {
+        statusEl.className = 'error';
+        statusEl.textContent = `❌ Error: ${err.message}`;
+      }
+    });
+  </script>
+  <script src="https://unpkg.com/cytoscape@3.29.2/dist/cytoscape.min.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+  <script src="/static/js/graph.js"></script>
+  <script src="/static/js/rag.js"></script>
+</body>
+</html>

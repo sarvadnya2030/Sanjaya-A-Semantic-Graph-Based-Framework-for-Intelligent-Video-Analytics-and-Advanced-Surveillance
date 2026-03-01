@@ -1,0 +1,5 @@
+{
+  "name": "sanjaya-frontend",
+  "version": "1.0.0",
+  "description": "Flask-based frontend for Sanjaya Video Analytics"
+}
