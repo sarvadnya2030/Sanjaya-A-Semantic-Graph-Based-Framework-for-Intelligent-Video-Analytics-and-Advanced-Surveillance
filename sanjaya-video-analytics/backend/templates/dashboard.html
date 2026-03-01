@@ -3,652 +3,680 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sanjaya Analytics</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Sanjaya Surveillance System</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f1e;
+      --panel: #111827;
+      --card: #151d2e;
+      --border: #1e2d45;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --purple: #a855f7;
+      --cyan: #06b6d4;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; background: #0d1424;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-brand { display: flex; align-items: center; gap: 12px; }
+    .header-brand .shield { font-size: 22px; }
+    .header-brand h1 { font-size: 16px; font-weight: 700; letter-spacing: 1px; color: #e2e8f0; }
+    .header-brand .online { font-size: 11px; color: var(--green); letter-spacing: 0.5px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; }
+    .badge-green { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+    .badge-blue  { background: rgba(59,130,246,.15); color: #60a5fa;    border: 1px solid rgba(59,130,246,.3); }
+    .badge-gray  { background: rgba(100,116,139,.15); color: #94a3b8;   border: 1px solid rgba(100,116,139,.3); }
+    .btn-upload {
+      background: var(--accent); color: #fff; border: none; border-radius: 6px;
+      padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-upload:hover { background: #2563eb; }
+    input[type="file"] { display: none; }
+
+    /* ── Progress Overlay ── */
+    #progressOverlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      background: rgba(0,0,0,.85); padding: 32px 0; text-align: center;
+    }
+    #progressMsg { color: #e2e8f0; font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    #progressTrack { width: 55%; margin: 0 auto; background: #1e2d45; border-radius: 999px; overflow: hidden; height: 8px; }
+    #progressBar { height: 8px; background: linear-gradient(90deg,#3b82f6,#06b6d4); border-radius: 999px; width: 0%; transition: width .4s ease; }
+    #progressPct { color: #64748b; font-size: 12px; margin-top: 8px; }
+    #stageChips { margin-top: 14px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+    /* ── Source bar ── */
+    .source-bar { padding: 10px 20px; background: #0d1424; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+    .source-bar label { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .source-select {
+      background: #1a2540; color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 30px 5px 10px; font-size: 13px; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%2364748b'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .source-select:focus { outline: none; border-color: var(--accent); }
+    #uploadStatus { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 6px; display: none; }
+    #uploadStatus.success { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+    #uploadStatus.error   { background: rgba(239,68,68,.15);  color: var(--red);   border: 1px solid rgba(239,68,68,.3); }
+
+    /* ── Layout ── */
+    .layout { display: grid; grid-template-columns: 260px 1fr 300px; gap: 0; height: calc(100vh - 85px); overflow: hidden; }
+    .col { overflow-y: auto; padding: 14px; }
+    .col::-webkit-scrollbar { width: 4px; }
+    .col::-webkit-scrollbar-track { background: transparent; }
+    .col::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 2px; }
+    .col-left  { border-right: 1px solid var(--border); }
+    .col-right { border-left: 1px solid var(--border); }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+    .card-head { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    .card-head h3 { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+    .card-body { padding: 14px; }
+
+    /* ── Source Summary ── */
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(30,45,69,.6); }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-label { font-size: 13px; color: var(--muted); }
+    .summary-val { font-size: 16px; font-weight: 800; color: var(--text); }
+
+    /* ── Risk Gauge ── */
+    .gauge-wrap { text-align: center; padding: 8px 0 0; }
+    #gaugeCanvas { display: block; margin: 0 auto; }
+    .gauge-val { font-size: 32px; font-weight: 900; color: var(--green); margin-top: -8px; }
+    .gauge-label { font-size: 11px; color: var(--green); font-weight: 700; letter-spacing: 1px; }
+    .risk-factors { margin-top: 12px; }
+    .rf-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: var(--muted); }
+    .rf-row span:last-child { color: var(--text); font-weight: 600; }
+
+    /* ── Timeline chart ── */
+    .timeline-note { font-size: 10px; color: var(--muted); margin-top: 6px; text-align: center; }
+
+    /* ── Salient Frames Grid ── */
+    .frames-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .frame-item { position: relative; cursor: pointer; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); background: #000; }
+    .frame-item img { width: 100%; height: 80px; object-fit: cover; display: block; }
+    .frame-item canvas { width: 100%; height: 80px; display: block; }
+    .frame-label { position: absolute; top: 4px; left: 4px; font-size: 9px; font-weight: 700; background: rgba(0,0,0,.7); color: #fff; padding: 2px 6px; border-radius: 3px; }
+    .frame-ts { position: absolute; bottom: 4px; right: 4px; font-size: 9px; background: rgba(0,0,0,.7); color: #94a3b8; padding: 1px 5px; border-radius: 3px; }
+    .frame-item.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,.3); }
+
+    /* ── Live Events ── */
+    .events-feed { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .events-feed::-webkit-scrollbar { width: 3px; }
+    .events-feed::-webkit-scrollbar-thumb { background: #1e2d45; }
+    .event-item { display: flex; gap: 8px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid rgba(30,45,69,.5); }
+    .event-item:last-child { border-bottom: none; }
+    .event-time { font-size: 10px; color: var(--muted); white-space: nowrap; margin-top: 2px; min-width: 52px; }
+    .event-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 3px; letter-spacing: .5px; white-space: nowrap; margin-top: 1px; }
+    .ev-enter  { background: rgba(34,197,94,.2);  color: var(--green);  border: 1px solid rgba(34,197,94,.4); }
+    .ev-exit   { background: rgba(239,68,68,.2);   color: var(--red);    border: 1px solid rgba(239,68,68,.4); }
+    .ev-posture{ background: rgba(168,85,247,.2);  color: var(--purple); border: 1px solid rgba(168,85,247,.4); }
+    .ev-loiter { background: rgba(245,158,11,.2);  color: var(--orange); border: 1px solid rgba(245,158,11,.4); }
+    .ev-risk   { background: rgba(239,68,68,.2);   color: var(--red);    border: 1px solid rgba(239,68,68,.4); }
+    .ev-default{ background: rgba(59,130,246,.2);  color: #60a5fa;       border: 1px solid rgba(59,130,246,.4); }
+    .event-desc { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+
+    /* ── Ask System (RAG) ── */
+    .rag-input-wrap { position: relative; margin-bottom: 10px; }
+    .rag-input { width: 100%; background: #1a2540; color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 9px 40px 9px 12px; font-size: 13px; }
+    .rag-input:focus { outline: none; border-color: var(--accent); }
+    .rag-send { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: var(--accent); border: none; border-radius: 5px; width: 28px; height: 28px; cursor: pointer; color: #fff; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+    .rag-checks { display: flex; gap: 16px; margin-bottom: 10px; }
+    .rag-checks label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; cursor: pointer; }
+    .rag-checks input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; }
+    .rag-answer { background: #1a2540; border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; font-size: 12px; color: #94a3b8; min-height: 60px; line-height: 1.6; }
+    .rag-thinking { font-size: 11px; color: var(--accent); margin-bottom: 6px; display: none; }
+    .prompt-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    .prompt-chip { background: #1a2540; color: #94a3b8; border: 1px solid var(--border); border-radius: 12px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
+    .prompt-chip:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── KG panel ── */
+    .kg-placeholder { background: #1a2540; border: 1px solid var(--border); border-radius: 7px; padding: 14px; font-size: 12px; color: var(--muted); min-height: 80px; }
+
+    /* ── Scrollbar for center col ── */
+    .col-center { overflow-y: auto; }
+  </style>
 </head>
 <body>
-  <nav class="top-nav">
-    <div class="nav-brand">
-      <h1>🎥 SANJAYA</h1>
-      <span>Video Intelligence Platform</span>
-    </div>
-    <div class="nav-actions">
-      <input id="videoFile" type="file" accept="video/*" hidden onchange="handleFileSelected()">
-      <button id="uploadBtn" class="btn ghost" onclick="document.getElementById('videoFile').click()">📤 Upload Video</button>
-      <button id="analyzeBtn" class="btn primary" onclick="uploadVideo()">⚡ Analyze</button>
-      <button class="btn ghost" onclick="exportReport('json')" title="Download JSON report">⬇ JSON</button>
-      <button class="btn ghost" onclick="exportReport('csv')"  title="Download CSV events">⬇ CSV</button>
-    </div>
-  </nav>
 
-  <!-- ── Progress Overlay ── -->
-  <div id="progressOverlay" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;
-       background:rgba(15,15,30,0.82);padding:28px 0;text-align:center;">
-    <div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:12px;" id="progressMsg">Initialising…</div>
-    <div style="width:60%;margin:0 auto;background:#2d3748;border-radius:999px;overflow:hidden;height:12px;">
-      <div id="progressBar" style="height:12px;background:linear-gradient(90deg,#667eea,#764ba2);
-           border-radius:999px;width:0%;transition:width 0.4s ease;"></div>
+<!-- ── Header ── -->
+<div class="header">
+  <div class="header-brand">
+    <span class="shield">🛡️</span>
+    <div>
+      <h1>SANJAYA SURVEILLANCE SYSTEM</h1>
+      <div class="online">● System: ONLINE</div>
     </div>
-    <div style="color:#a0aec0;font-size:12px;margin-top:8px;" id="progressPct">0%</div>
-    <div style="margin-top:14px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap;" id="stageChips"></div>
+  </div>
+  <div class="header-right">
+    <input id="videoFile" type="file" accept="video/*" onchange="handleFile()">
+    <button class="btn-upload" onclick="document.getElementById('videoFile').click()">📤 Upload Video/Images</button>
+    <span class="badge badge-green" id="cvBadge">CV: ON</span>
+    <span class="badge badge-green" id="neo4jBadge">Neo4j: ON</span>
+    <span class="badge badge-gray" id="latencyBadge">50ms</span>
+  </div>
+</div>
+
+<!-- ── Progress Overlay ── -->
+<div id="progressOverlay">
+  <div id="progressMsg">Initialising…</div>
+  <div id="progressTrack"><div id="progressBar"></div></div>
+  <div id="progressPct">0%</div>
+  <div id="stageChips"></div>
+</div>
+
+<!-- ── Source bar ── -->
+<div class="source-bar">
+  <label>Select Source:</label>
+  <select class="source-select" id="sourceSelect" onchange="onSourceChange()">
+    <option value="">— select —</option>
+  </select>
+  <div id="uploadStatus"></div>
+</div>
+
+<!-- ── Main Layout ── -->
+<div class="layout">
+
+  <!-- ═══ LEFT ═══ -->
+  <div class="col col-left">
+
+    <!-- Source Summary -->
+    <div class="card">
+      <div class="card-head"><h3>📋 Source Summary</h3></div>
+      <div class="card-body" style="padding:8px 14px;">
+        <div class="summary-row"><span class="summary-label">Frames:</span><span class="summary-val" id="sumFrames">—</span></div>
+        <div class="summary-row"><span class="summary-label">Persons:</span><span class="summary-val" id="sumPersons">—</span></div>
+        <div class="summary-row"><span class="summary-label">Events:</span><span class="summary-val" id="sumEvents">—</span></div>
+        <div class="summary-row"><span class="summary-label">VLM Analyses:</span><span class="summary-val" id="sumVlm">—</span></div>
+      </div>
+    </div>
+
+    <!-- Risk Assessment -->
+    <div class="card">
+      <div class="card-head"><h3>⚠️ Risk Assessment</h3></div>
+      <div class="card-body">
+        <div class="gauge-wrap">
+          <canvas id="gaugeCanvas" width="200" height="110"></canvas>
+          <div class="gauge-val" id="gaugeVal">—</div>
+          <div class="gauge-label" id="gaugeLabel">LOW</div>
+        </div>
+        <div class="risk-factors">
+          <div class="rf-row"><span>• Event Frequency</span><span id="rfFreq">—</span></div>
+          <div class="rf-row"><span>• Duration</span><span id="rfDur">—</span></div>
+          <div class="rf-row"><span>• Zone Sensitivity</span><span id="rfZone">—</span></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <div id="uploadStatus" class="status-banner"></div>
+  <!-- ═══ CENTER ═══ -->
+  <div class="col col-center">
 
-  <div class="layout">
-    <!-- Left -->
-    <aside class="pane left">
-      <div class="card">
-        <h2>📊 Analytics Overview</h2>
-        <div class="stats-grid">
-          <div class="stat blue"><div>🎬</div><p id="totalFrames">0</p><span>Frames</span></div>
-          <div class="stat green"><div>👥</div><p id="totalPersons">0</p><span>Persons</span></div>
-          <div class="stat cyan"><div>📦</div><p id="totalObjects">0</p><span>Items</span></div>
-          <div class="stat orange"><div>⚡</div><p id="totalEvents">0</p><span>Events</span></div>
-          <div class="stat red"><div>⚠️</div><p id="riskLevel">-</p><span>Risk</span></div>
-          <div class="stat purple"><div>🔥</div><p id="salientCount">0</p><span>Salient</span></div>
+    <!-- Frame Saliency Timeline -->
+    <div class="card">
+      <div class="card-head"><h3>📈 Frame Saliency Timeline</h3></div>
+      <div class="card-body" style="padding:10px 14px 6px;">
+        <canvas id="saliencyChart" height="70"></canvas>
+        <div class="timeline-note" id="timelineNote">Upload a video to see activity distribution</div>
+      </div>
+    </div>
+
+    <!-- Salient Frames Top-K -->
+    <div class="card">
+      <div class="card-head"><h3>🖼️ Salient Frames (Top-K)</h3></div>
+      <div class="card-body">
+        <div class="frames-grid" id="framesGrid">
+          <div class="frame-item"><canvas class="frame-ph" id="fc0" width="240" height="80"></canvas><span class="frame-label">Frame 0</span></div>
+          <div class="frame-item"><canvas class="frame-ph" id="fc1" width="240" height="80"></canvas><span class="frame-label">Frame 1</span></div>
+          <div class="frame-item"><canvas class="frame-ph" id="fc2" width="240" height="80"></canvas><span class="frame-label">Frame 2</span></div>
+          <div class="frame-item"><canvas class="frame-ph" id="fc3" width="240" height="80"></canvas><span class="frame-label">Frame 3</span></div>
+          <div class="frame-item"><canvas class="frame-ph" id="fc4" width="240" height="80"></canvas><span class="frame-label">Frame 4</span></div>
+          <div class="frame-item"><canvas class="frame-ph" id="fc5" width="240" height="80"></canvas><span class="frame-label">Frame 5</span></div>
         </div>
       </div>
+    </div>
 
-      <div class="card">
-        <h2>📊 Motion Analysis</h2>
-        <canvas id="motionChart" width="100" height="60"></canvas>
+    <!-- Knowledge Graph (bottom) -->
+    <div class="card">
+      <div class="card-head"><h3>🕸️ Knowledge Graph</h3></div>
+      <div class="card-body">
+        <div class="kg-placeholder" id="kgContent">Knowledge graph will appear after video analysis…</div>
       </div>
+    </div>
 
-      <div class="card">
-        <h2>📋 Event Distribution</h2>
-        <canvas id="eventChart" width="100" height="80"></canvas>
-      </div>
-
-      <div class="card">
-        <h2>🗺️ Zone Activity Heatmap</h2>
-        <canvas id="zoneChart" width="100" height="80"></canvas>
-      </div>
-
-      <!-- Posture Summary (new) -->
-      <div class="card" id="postureCard" style="display:none;">
-        <h2>🧍 Posture Detection</h2>
-        <div id="postureSummary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
-      </div>
-
-      <!-- Session History (new) -->
-      <div class="card">
-        <h2>📂 Session History</h2>
-        <div id="sessionList" style="max-height:260px;overflow-y:auto;font-size:12px;">
-          <p style="color:#a0aec0;">No previous sessions</p>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Center -->
-    <main class="pane center">
-      <div class="card">
-        <h2>🖼️ Salient Frames</h2>
-        <div class="frames">
-          <div class="frame">
-            <span class="badge">Frame 1</span>
-            <img id="frame0" alt="frame0">
-            <div class="frame-meta" id="frame0-info">Waiting for upload…</div>
-            <div class="frame-objects" id="frame0-objects"></div>
-          </div>
-          <div class="frame">
-            <span class="badge">Frame 2</span>
-            <img id="frame1" alt="frame1">
-            <div class="frame-meta" id="frame1-info">Waiting for upload…</div>
-            <div class="frame-objects" id="frame1-objects"></div>
-          </div>
-          <div class="frame">
-            <span class="badge">Frame 3</span>
-            <img id="frame2" alt="frame2">
-            <div class="frame-meta" id="frame2-info">Waiting for upload…</div>
-            <div class="frame-objects" id="frame2-objects"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>⏱️ Event Timeline</h2>
-        <canvas id="timelineChart" width="100" height="50"></canvas>
-        <div id="eventStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:15px;">
-          <div style="text-align:center;padding:10px;background:#f7fafc;border-radius:5px;">
-            <div style="font-size:24px;font-weight:bold;color:#667eea;" id="statStationary">0</div>
-            <div style="font-size:12px;color:#718096;">Stationary</div>
-          </div>
-          <div style="text-align:center;padding:10px;background:#f7fafc;border-radius:5px;">
-            <div style="font-size:24px;font-weight:bold;color:#48bb78;" id="statWalking">0</div>
-            <div style="font-size:12px;color:#718096;">Walking</div>
-          </div>
-          <div style="text-align:center;padding:10px;background:#f7fafc;border-radius:5px;">
-            <div style="font-size:24px;font-weight:bold;color:#f6ad55;" id="statMoving">0</div>
-            <div style="font-size:12px;color:#718096;">Moving</div>
-          </div>
-          <div style="text-align:center;padding:10px;background:#f7fafc;border-radius:5px;">
-            <div style="font-size:24px;font-weight:bold;color:#e53e3e;" id="statLoitering">0</div>
-            <div style="font-size:12px;color:#718096;">Loitering</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>📊 Event Insights & Analytics</h2>
-        
-        <!-- Summary Cards -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
-          <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:15px;border-radius:8px;color:white;">
-            <div style="font-size:11px;opacity:0.9;margin-bottom:5px;">TOTAL EVENTS</div>
-            <div style="font-size:28px;font-weight:bold;" id="insightTotalEvents">0</div>
-            <div style="font-size:11px;opacity:0.8;margin-top:5px;" id="insightTimeRange">-</div>
-          </div>
-          <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);padding:15px;border-radius:8px;color:white;">
-            <div style="font-size:11px;opacity:0.9;margin-bottom:5px;">HIGH PRIORITY</div>
-            <div style="font-size:28px;font-weight:bold;" id="insightHighPriority">0</div>
-            <div style="font-size:11px;opacity:0.8;margin-top:5px;" id="insightHighPriorityPct">0% of total</div>
-          </div>
-          <div style="background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);padding:15px;border-radius:8px;color:white;">
-            <div style="font-size:11px;opacity:0.9;margin-bottom:5px;">UNIQUE TRACKS</div>
-            <div style="font-size:28px;font-weight:bold;" id="insightUniqueTracks">0</div>
-            <div style="font-size:11px;opacity:0.8;margin-top:5px;" id="insightAvgSpeed">-</div>
-          </div>
-        </div>
-
-        <!-- Motion Patterns -->
-        <div style="background:#f7fafc;padding:15px;border-radius:8px;margin-bottom:15px;">
-          <h3 style="font-size:14px;color:#2d3748;margin:0 0 12px 0;font-weight:600;">🚶 Motion State Distribution</h3>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
-            <div style="background:white;padding:12px;border-radius:6px;border-left:3px solid #667eea;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:13px;color:#4a5568;">⏸️ Stationary</span>
-                <span style="font-size:16px;font-weight:bold;color:#667eea;" id="motionStationary">0</span>
-              </div>
-              <div style="font-size:11px;color:#718096;margin-top:4px;" id="motionStationaryPct">0%</div>
-            </div>
-            <div style="background:white;padding:12px;border-radius:6px;border-left:3px solid #48bb78;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:13px;color:#4a5568;">🚶 Walking</span>
-                <span style="font-size:16px;font-weight:bold;color:#48bb78;" id="motionWalking">0</span>
-              </div>
-              <div style="font-size:11px;color:#718096;margin-top:4px;" id="motionWalkingPct">0%</div>
-            </div>
-            <div style="background:white;padding:12px;border-radius:6px;border-left:3px solid #f6ad55;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:13px;color:#4a5568;">🏃 Moving</span>
-                <span style="font-size:16px;font-weight:bold;color:#f6ad55;" id="motionMoving">0</span>
-              </div>
-              <div style="font-size:11px;color:#718096;margin-top:4px;" id="motionMovingPct">0%</div>
-            </div>
-            <div style="background:white;padding:12px;border-radius:6px;border-left:3px solid #e53e3e;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:13px;color:#4a5568;">⚠️ Loitering</span>
-                <span style="font-size:16px;font-weight:bold;color:#e53e3e;" id="motionLoitering">0</span>
-              </div>
-              <div style="font-size:11px;color:#718096;margin-top:4px;" id="motionLoiteringPct">0%</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Priority & Speed Analysis -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;">
-          <div style="background:#f7fafc;padding:15px;border-radius:8px;">
-            <h3 style="font-size:14px;color:#2d3748;margin:0 0 12px 0;font-weight:600;">🎯 Priority Breakdown</h3>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:12px;color:#718096;">🔴 High</span>
-                <span style="font-weight:600;color:#e53e3e;" id="priorityHigh">0</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:12px;color:#718096;">🟡 Medium</span>
-                <span style="font-weight:600;color:#f6ad55;" id="priorityMedium">0</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:12px;color:#718096;">🟢 Low</span>
-                <span style="font-weight:600;color:#48bb78;" id="priorityLow">0</span>
-              </div>
-            </div>
-          </div>
-          <div style="background:#f7fafc;padding:15px;border-radius:8px;">
-            <h3 style="font-size:14px;color:#2d3748;margin:0 0 12px 0;font-weight:600;">⚡ Speed Analysis</h3>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:12px;color:#718096;">Average Speed</span>
-                <span style="font-weight:600;color:#667eea;" id="speedAvg">0 px/s</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:12px;color:#718096;">Max Speed</span>
-                <span style="font-weight:600;color:#e53e3e;" id="speedMax">0 px/s</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:12px;color:#718096;">Min Speed</span>
-                <span style="font-weight:600;color:#48bb78;" id="speedMin">0 px/s</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Zone Hotspots -->
-        <div style="background:#f7fafc;padding:15px;border-radius:8px;">
-          <h3 style="font-size:14px;color:#2d3748;margin:0 0 12px 0;font-weight:600;">🗺️ Zone Activity Hotspots</h3>
-          <div id="zoneHotspots" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div style="text-align:center;padding:8px;background:white;border-radius:4px;font-size:11px;color:#718096;">No data</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>🤖 VLM Intelligence Analysis</h2>
-        <div class="tabs">
-          <button class="tab active" data-tab="surveillance" onclick="switchIntelTab('surveillance')">📹 Surveillance</button>
-          <button class="tab" data-tab="behavioral" onclick="switchIntelTab('behavioral')">🧠 Behavioral</button>
-          <button class="tab" data-tab="knowledge" onclick="switchIntelTab('knowledge')">🕸️ Knowledge Graph</button>
-        </div>
-        <div class="tab-content">
-          <div id="surveillance-panel" class="panel active">
-            <div id="surveillanceText" class="intel-box">Upload video for surveillance analysis</div>
-          </div>
-          <div id="behavioral-panel" class="panel">
-            <div id="behavioralText" class="intel-box">Behavioral insights will appear here</div>
-          </div>
-          <div id="knowledge-panel" class="panel">
-            <div id="kgContent" class="intel-box">Knowledge graph will be generated</div>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <!-- Right -->
-    <aside class="pane right">
-      <div class="card rag">
-        <h2>🔍 Natural Language Query</h2>
-        <p class="sub">Ask questions about your surveillance footage</p>
-        <textarea id="ragQuery" rows="3" placeholder="Who was running?&#10;What happened in zone Z5?&#10;Describe suspicious behavior..."></textarea>
-        
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-          <button class="btn primary" style="flex: 1;" onclick="performRAGSearch()">🔎 Ask</button>
-          <button class="btn ghost" onclick="rebuildRAG()">🔄 Rebuild Index</button>
-        </div>
-
-        <div class="chips">
-          <button onclick="setQuery('Who was running in the video?')">Who was running?</button>
-          <button onclick="setQuery('What happened in zone Z5?')">Zone activity</button>
-          <button onclick="setQuery('Describe suspicious behavior')">Suspicious</button>
-          <button onclick="setQuery('What objects were detected?')">Objects</button>
-        </div>
-
-        <div id="ragResults" class="rag-box">Ask a question to get AI insights</div>
-
-        <div class="history">
-          <h3>📜 Recent Queries</h3>
-          <div id="queryHistory" class="history-list">No queries yet</div>
-        </div>
-      </div>
-
-      <!-- GraphRAG Component -->
-      <div class="card">
-        <div class="card-header">
-          <h3>🧠 GraphRAG - Chain of Thought Reasoning</h3>
-        </div>
-        <div class="card-body">
-          <div class="query-section">
-            <input type="text" id="graph-query" placeholder="Ask a complex reasoning question..." 
-                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
-            
-            <div style="margin-bottom: 10px;">
-              <label style="margin-right: 20px;">
-                <input type="radio" name="rag-mode" value="graph" checked> GraphRAG
-              </label>
-              <label style="margin-right: 20px;">
-                <input type="radio" name="rag-mode" value="json"> JSON RAG
-              </label>
-              <label>
-                <input type="radio" name="rag-mode" value="hybrid"> Hybrid (Both)
-              </label>
-            </div>
-            
-            <button onclick="askGraphQuestion()" class="btn-primary" style="padding: 10px 20px;">
-              🔍 Reason with GraphRAG
-            </button>
-          </div>
-          
-          <!-- Chain of Thought Display -->
-          <div id="cot-display" style="margin-top: 20px; display: none;">
-            <h4 style="color: #667eea;">💭 Chain of Thought:</h4>
-            <div id="cot-steps"></div>
-          </div>
-          
-          <!-- Answer Display -->
-          <div id="graph-answer-display" style="margin-top: 20px; display: none;">
-            <h4 style="color: #48bb78;">✅ Answer:</h4>
-            <div id="graph-answer-text" style="padding: 15px; background: #f7fafc; border-radius: 8px;"></div>
-            
-            <div id="reasoning-path" style="margin-top: 15px;">
-              <h5>🔗 Reasoning Path:</h5>
-              <div id="path-text" style="font-family: monospace; color: #4a5568;"></div>
-            </div>
-            
-            <div id="graph-evidence" style="margin-top: 15px;">
-              <h5>📊 Evidence from Graph:</h5>
-              <div id="evidence-list"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Telegram Status Component -->
-      <div class="card">
-        <div class="card-header">
-          <h3>📱 Telegram Notifications</h3>
-        </div>
-        <div class="card-body">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <p>Event summaries and alerts are sent to your Telegram bot</p>
-              <p style="color: #718096; font-size: 14px;">Configure bot token in environment variables</p>
-            </div>
-            <div id="telegram-status" style="padding: 10px 20px; border-radius: 20px; background: #48bb78; color: white;">
-              ✅ Active
-            </div>
-          </div>
-          
-          <div id="recent-notifications" style="margin-top: 20px;">
-            <h5>📬 Recent Notifications:</h5>
-            <div id="notification-list" style="max-height: 200px; overflow-y: auto;">
-              <p style="color: #a0aec0;">No notifications yet</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </aside>
   </div>
 
-  <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <!-- ═══ RIGHT ═══ -->
+  <div class="col col-right">
 
-  <!-- ── SocketIO Progress + Export + Sessions ── -->
-  <script>
-  // ── SocketIO live progress ──────────────────────────────────────────────────
-  const socket = io();
-  const STAGE_LABELS = {
-    upload:      '📤 Upload',
-    cleanup:     '🧹 Cleanup',
-    cv_pipeline: '🔍 CV Pipeline',
-    frames:      '🖼 Frames',
-    vlm:         '🤖 VLM',
-    neo4j:       '🕸 Neo4j',
-    rag:         '📚 RAG',
-    done:        '✅ Done',
-    error:       '❌ Error',
-  };
+    <!-- Live Events -->
+    <div class="card">
+      <div class="card-head"><h3>⚡ Live Events</h3></div>
+      <div class="card-body" style="padding:8px 14px;">
+        <div class="events-feed" id="eventsFeed">
+          <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0;">Upload video to see live events…</div>
+        </div>
+      </div>
+    </div>
 
-  socket.on('progress', (d) => {
-    const overlay = document.getElementById('progressOverlay');
-    const bar     = document.getElementById('progressBar');
-    const msg     = document.getElementById('progressMsg');
-    const pct     = document.getElementById('progressPct');
-    const chips   = document.getElementById('stageChips');
+    <!-- Ask the System -->
+    <div class="card">
+      <div class="card-head"><h3>💬 Ask the System</h3></div>
+      <div class="card-body">
+        <div class="prompt-chips">
+          <span class="prompt-chip" onclick="setQ('What suspicious activities were detected?')">Suspicious?</span>
+          <span class="prompt-chip" onclick="setQ('Who was loitering?')">Loitering?</span>
+          <span class="prompt-chip" onclick="setQ('What objects were detected?')">Objects?</span>
+          <span class="prompt-chip" onclick="setQ('Describe the scene')">Scene?</span>
+        </div>
+        <div class="rag-input-wrap">
+          <input class="rag-input" id="ragQ" type="text" placeholder="What suspicious activities were detected?">
+          <button class="rag-send" onclick="askRag()">→</button>
+        </div>
+        <div class="rag-checks">
+          <label><input type="checkbox" id="useGraph" checked> Graph</label>
+          <label><input type="checkbox" id="useVector" checked> Vector</label>
+        </div>
+        <div class="rag-thinking" id="ragThinking">Thinking…</div>
+        <div class="rag-answer" id="ragAnswer">Ask a question to get AI insights about the surveillance footage.</div>
+      </div>
+    </div>
 
-    overlay.style.display = 'block';
-    bar.style.width  = d.pct + '%';
-    pct.textContent  = d.pct + '%';
-    msg.textContent  = (STAGE_LABELS[d.stage] || d.stage) + ' — ' + d.msg;
+  </div>
+</div>
 
-    // add stage chip
-    const existing = chips.querySelector(`[data-stage="${d.stage}"]`);
-    if (!existing) {
-      const chip = document.createElement('span');
-      chip.dataset.stage = d.stage;
-      chip.textContent   = STAGE_LABELS[d.stage] || d.stage;
-      chip.style.cssText = 'padding:4px 10px;border-radius:12px;background:#667eea;color:#fff;font-size:11px;';
-      chips.appendChild(chip);
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+// ════════════════════════════════════════════════════════════
+//  SANJAYA SURVEILLANCE DASHBOARD
+// ════════════════════════════════════════════════════════════
+
+let saliencyChart = null;
+
+// ── SocketIO Progress ────────────────────────────────────────
+const socket = io();
+const STAGES = { upload:'📤 Upload', cleanup:'🧹 Cleanup', cv_pipeline:'🔍 CV Pipeline', frames:'🖼 Frames', vlm:'🤖 VLM', neo4j:'🕸 Neo4j', rag:'📚 RAG', done:'✅ Done', error:'❌ Error' };
+socket.on('progress', d => {
+  const ov = document.getElementById('progressOverlay');
+  ov.style.display = 'block';
+  document.getElementById('progressBar').style.width = d.pct + '%';
+  document.getElementById('progressPct').textContent = d.pct + '%';
+  document.getElementById('progressMsg').textContent = (STAGES[d.stage] || d.stage) + ' — ' + d.msg;
+  const chips = document.getElementById('stageChips');
+  if (!chips.querySelector(`[data-s="${d.stage}"]`)) {
+    const c = document.createElement('span');
+    c.dataset.s = d.stage; c.textContent = STAGES[d.stage] || d.stage;
+    c.style.cssText = 'padding:3px 10px;border-radius:10px;background:#1e3a5f;color:#60a5fa;font-size:11px;border:1px solid #2563eb;';
+    chips.appendChild(c);
+  }
+  if (d.pct >= 100 || d.stage === 'error') setTimeout(() => { ov.style.display = 'none'; chips.innerHTML = ''; }, 2000);
+});
+
+// ── Source dropdown population ───────────────────────────────
+async function populateSources() {
+  try {
+    const r = await fetch('/api/videos'); const d = await r.json();
+    const sel = document.getElementById('sourceSelect');
+    (d.videos || []).forEach(v => {
+      const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+  } catch(e) {}
+}
+
+function onSourceChange() {
+  const v = document.getElementById('sourceSelect').value;
+  if (v) loadDashboard(v);
+}
+
+// ── File handling ────────────────────────────────────────────
+function handleFile() {
+  const f = document.getElementById('videoFile').files[0];
+  if (f) { showStatus(`Selected: ${f.name}`, 'success'); }
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('uploadStatus');
+  el.textContent = msg; el.className = type; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+// ── Upload & Pipeline ────────────────────────────────────────
+async function uploadVideo() {
+  const file = document.getElementById('videoFile').files[0];
+  if (!file) { showStatus('Please choose a video file', 'error'); return; }
+  document.getElementById('progressOverlay').style.display = 'block';
+  document.getElementById('progressMsg').textContent = '📤 Uploading…';
+  document.getElementById('progressBar').style.width = '2%';
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const resp = await fetch('/pipeline/upload', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Upload failed');
+    showStatus(`Done — ${data.salient_frames?.length || 0} frames analysed`, 'success');
+    renderAll(data);
+    await populateSources();
+    const sel = document.getElementById('sourceSelect');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === file.name) { sel.selectedIndex = i; break; }
     }
-    if (d.pct >= 100 || d.stage === 'error') {
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        chips.innerHTML = '';
-      }, 1800);
+  } catch(e) { showStatus(e.message, 'error'); document.getElementById('progressOverlay').style.display = 'none'; }
+}
+
+// Allow clicking Analyze button or the upload button to trigger
+document.addEventListener('DOMContentLoaded', () => {
+  const uploadBtn = document.getElementById('uploadBtn');
+  if (uploadBtn) uploadBtn.addEventListener('click', uploadVideo);
+  // Also wire the file input button if exists
+  populateSources();
+  drawAllPlaceholders();
+});
+
+// ── Gauge ────────────────────────────────────────────────────
+function drawGauge(score, label) {
+  const canvas = document.getElementById('gaugeCanvas');
+  const ctx = canvas.getContext('2d');
+  const cx = 100, cy = 98, r = 72;
+  ctx.clearRect(0, 0, 200, 110);
+
+  // Track
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+  ctx.strokeStyle = '#1e2d45'; ctx.lineWidth = 14; ctx.stroke();
+
+  // Filled arc
+  const pct = Math.min(score / 100, 1);
+  const color = score < 30 ? '#22c55e' : score < 60 ? '#f59e0b' : '#ef4444';
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + pct * Math.PI);
+  ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = 'round'; ctx.stroke();
+
+  // Needle
+  const angle = Math.PI + pct * Math.PI;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + (r - 18) * Math.cos(angle), cy + (r - 18) * Math.sin(angle));
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2 * Math.PI);
+  ctx.fillStyle = '#fff'; ctx.fill();
+
+  // Labels
+  ctx.font = '9px sans-serif'; ctx.fillStyle = '#475569';
+  ctx.fillText('0', cx - r - 8, cy + 6);
+  ctx.fillText('100', cx + r - 12, cy + 6);
+
+  document.getElementById('gaugeVal').textContent = score;
+  document.getElementById('gaugeLabel').textContent = label.toUpperCase();
+  const gaugeValEl = document.getElementById('gaugeVal');
+  gaugeValEl.style.color = color;
+  document.getElementById('gaugeLabel').style.color = color;
+}
+
+// ── Saliency Chart ───────────────────────────────────────────
+function drawSaliencyChart(frames) {
+  const ctx = document.getElementById('saliencyChart');
+  if (saliencyChart) { saliencyChart.destroy(); saliencyChart = null; }
+
+  const labels = frames.map((f, i) => (f.timestamp || (i * 0.1)).toFixed(2) + 's');
+  const scores = frames.map(f => f.activity_score || f.saliency || (f.persons || 0) * 10 + (f.objects || 0) * 5);
+  const maxS = Math.max(...scores, 1);
+
+  saliencyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Activity', data: scores,
+        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.15)',
+        tension: 0.4, fill: true, pointRadius: 4,
+        pointBackgroundColor: scores.map(s => s > maxS * 0.6 ? '#ef4444' : '#3b82f6'),
+        pointBorderColor: '#fff', pointBorderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e2d45' } },
+        y: { beginAtZero: true, ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e2d45' } }
+      }
     }
   });
 
-  // ── Export report ──────────────────────────────────────────────────────────
-  function exportReport(fmt) {
-    window.location.href = '/api/export/report?format=' + fmt;
-  }
+  const total = frames.length;
+  const note = `Red peaks = salient moments | Click to jump to frame | Currently showing: ${total} frames analyzed`;
+  document.getElementById('timelineNote').textContent = note;
+}
 
-  // ── Session history ────────────────────────────────────────────────────────
-  async function loadSessions() {
-    try {
-      const r = await fetch('/api/sessions');
-      const d = await r.json();
-      const sessions = d.sessions || [];
-      const list = document.getElementById('sessionList');
-      if (sessions.length === 0) {
-        list.innerHTML = '<p style="color:#a0aec0;">No previous sessions</p>';
-        return;
-      }
-      list.innerHTML = sessions.map(s => {
-        const riskColor = s.risk_level === 'high'   ? '#e53e3e' :
-                          s.risk_level === 'medium' ? '#f6ad55' : '#48bb78';
-        const time = new Date(s.timestamp).toLocaleTimeString();
-        const date = new Date(s.timestamp).toLocaleDateString();
-        return `
-          <div style="padding:8px;border-left:3px solid ${riskColor};
-               background:#f7fafc;border-radius:4px;margin-bottom:6px;">
-            <div style="font-weight:600;color:#2d3748;overflow:hidden;
-                 text-overflow:ellipsis;white-space:nowrap;" title="${s.filename}">${s.filename}</div>
-            <div style="color:#718096;font-size:11px;">${date} ${time}</div>
-            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
-              <span style="color:${riskColor};font-weight:600;">${(s.risk_level||'low').toUpperCase()}</span>
-              <span style="color:#4a5568;">${s.event_count||0} events</span>
-              <span style="color:#4a5568;">${(s.detected_objects||[]).slice(0,3).join(', ')||'–'}</span>
-            </div>
-          </div>`;
-      }).join('');
-    } catch(e) { console.error('Sessions load failed:', e); }
-  }
+// ── Frame Grid ───────────────────────────────────────────────
+function drawPlaceholder(canvasId) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#0d1424'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = '#1e2d45'; ctx.lineWidth = 1;
+  ctx.strokeRect(2, 2, c.width - 4, c.height - 4);
+  ctx.fillStyle = '#1e3a5f'; ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText('No data', c.width / 2, c.height / 2 + 4);
+}
 
-  // ── Posture summary display ────────────────────────────────────────────────
-  function displayPostureSummary(postureSummary) {
-    if (!postureSummary || Object.keys(postureSummary).length === 0) return;
-    const card = document.getElementById('postureCard');
-    const div  = document.getElementById('postureSummary');
-    const icons = { standing:'🧍', crouching:'🤸', sitting:'🪑', running:'🏃', unknown:'❓' };
-    div.innerHTML = Object.entries(postureSummary).map(([k,v]) =>
-      `<div style="background:#f7fafc;border-radius:6px;padding:10px;text-align:center;">
-         <div style="font-size:22px;">${icons[k]||'👤'}</div>
-         <div style="font-weight:700;color:#2d3748;">${v}</div>
-         <div style="font-size:11px;color:#718096;">${k}</div>
-       </div>`
-    ).join('');
-    card.style.display = 'block';
-  }
+function drawAllPlaceholders() {
+  for (let i = 0; i < 6; i++) drawPlaceholder('fc' + i);
+}
 
-  // Hook into existing uploadVideo to show overlay + update posture after done
-  const _origUploadVideo = window.uploadVideo;
-  window.uploadVideo = async function() {
-    const file = document.getElementById('videoFile').files[0];
-    if (!file) { showStatus('Please choose a video file','error'); return; }
-    // Show overlay immediately
-    document.getElementById('progressOverlay').style.display = 'block';
-    document.getElementById('progressMsg').textContent = '📤 Uploading…';
-    document.getElementById('progressBar').style.width = '2%';
-    document.getElementById('stageChips').innerHTML = '';
-    // Run pipeline
-    const fd = new FormData(); fd.append('file', file);
-    try {
-      const resp = await fetch('/pipeline/upload', { method:'POST', body:fd });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Upload failed');
-      showStatus(`Done — ${data.salient_frames?.length||0} salient frames · risk: ${data.insights?.overall_risk||'low'}`, 'success');
-      updateStats(data);
-      displaySalientFrames(data.salient_frames||[]);
-      displayVLMAnalysis(data.vlm_results||[], data.insights||{});
-      displayEvents(data);
-      if (data.insights?.posture_summary) displayPostureSummary(data.insights.posture_summary);
-      await loadSessions();
-      setTimeout(() => { try { if (typeof renderCharts === 'function') renderCharts(data); } catch(e){} }, 400);
-      setTimeout(() => { try { loadEventInsightsFromFile(); } catch(e){} }, 800);
-    } catch(e) {
-      showStatus(e.message,'error');
-      document.getElementById('progressOverlay').style.display = 'none';
-    }
+function renderFrameImage(canvasId, url, label, ts) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    c.width = img.width; c.height = img.height;
+    ctx.drawImage(img, 0, 0);
   };
+  img.onerror = () => drawPlaceholder(canvasId);
+  img.src = url;
 
-  // Load sessions on page load
-  document.addEventListener('DOMContentLoaded', () => {
-    loadSessions();
+  // update sibling spans
+  const item = c.closest('.frame-item');
+  if (item) {
+    const lbl = item.querySelector('.frame-label');
+    if (lbl) lbl.textContent = label;
+    if (ts !== undefined) {
+      let tsEl = item.querySelector('.frame-ts');
+      if (!tsEl) { tsEl = document.createElement('span'); tsEl.className = 'frame-ts'; item.appendChild(tsEl); }
+      tsEl.textContent = typeof ts === 'number' ? ts.toFixed(2) + 's' : ts;
+    }
+  }
+}
+
+function populateFrames(frames) {
+  frames.slice(0, 6).forEach((f, i) => {
+    const url = f.image_url || f.image_path || '';
+    if (url) renderFrameImage('fc' + i, url, `Frame ${i}`, f.timestamp);
+    else drawPlaceholder('fc' + i);
   });
-  </script>
-  <script>
-    async function askGraphQuestion() {
-      const query = document.getElementById('graph-query').value.trim();
-      const mode = document.querySelector('input[name="rag-mode"]:checked').value;
-      
-      if (!query) {
-          alert('Please enter a question');
-          return;
-      }
-      
-      const endpoint = mode === 'graph' ? '/rag/graph' : 
-                       mode === 'hybrid' ? '/rag/hybrid' : '/rag/search';
-      
-      try {
-          // Show loading
-          document.getElementById('graph-answer-display').style.display = 'block';
-          document.getElementById('graph-answer-text').innerHTML = '🔄 Reasoning...';
-          
-          const response = await fetch(`${endpoint}?q=${encodeURIComponent(query)}`);
-          const data = await response.json();
-          
-          // Display Chain of Thought
-          if (data.chain_of_thought && data.chain_of_thought.length > 0) {
-              displayChainOfThought(data.chain_of_thought);
-          } else {
-              document.getElementById('cot-display').style.display = 'none';
-          }
-          
-          // Display Answer (Clean, no confidence/evidence)
-          document.getElementById('graph-answer-text').innerHTML = `
-              <div style="font-size: 16px; line-height: 1.6; color: #2d3748;">${data.answer}</div>
-          `;
-          
-          // Hide technical details (reasoning path, evidence) for cleaner UI
-          
-      } catch (error) {
-          console.error('GraphRAG error:', error);
-          document.getElementById('graph-answer-text').innerHTML = `
-              <div style="color: #e53e3e;">❌ Error: ${error.message}</div>
-          `;
-      }
-    }
+  // fill remaining with placeholders
+  for (let i = frames.length; i < 6; i++) drawPlaceholder('fc' + i);
+}
 
-    function displayChainOfThought(steps) {
-      const cotDisplay = document.getElementById('cot-display');
-      const cotSteps = document.getElementById('cot-steps');
-      
-      let html = '';
-      steps.forEach((step, idx) => {
-          html += `
-              <div style="margin: 15px 0; padding: 15px; background: #f7fafc; border-left: 4px solid #667eea; border-radius: 4px;">
-                  <div style="font-weight: bold; color: #667eea; margin-bottom: 8px;">
-                      Step ${step.step}: ${step.reasoning}
-                  </div>
-                  <ul style="margin: 5px 0; padding-left: 20px; color: #4a5568;">
-                      ${step.findings.map(f => `<li>${f}</li>`).join('')}
-                  </ul>
-              </div>
-          `;
-      });
-      
-      cotSteps.innerHTML = html;
-      cotDisplay.style.display = 'block';
-    }
+// ── Live Events Feed ─────────────────────────────────────────
+const BADGE_MAP = {
+  'ENTER_SCENE': ['ENTER SCENE', 'ev-enter'],
+  'ENTER SCENE': ['ENTER SCENE', 'ev-enter'],
+  'EXIT_SCENE':  ['EXIT SCENE',  'ev-exit'],
+  'POSTURE_CHANGE': ['POSTURE CHANGE', 'ev-posture'],
+  'LOITERING':   ['LOITERING',   'ev-loiter'],
+  'RISK':        ['RISK',        'ev-risk'],
+};
 
-    async function rebuildRAG() {
-      try {
-        showStatus('🔨 Rebuilding RAG index...', 'info');
-        
-        const response = await fetch('/rag/rebuild', { method: 'POST' });
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-          showStatus(`✅ RAG index rebuilt: ${data.document_count} documents`, 'success');
-        } else {
-          showStatus('❌ Rebuild failed: ' + data.message, 'error');
-        }
-      } catch (error) {
-        showStatus('❌ Rebuild error: ' + error.message, 'error');
-      }
-    }
-    
-    async function checkRAGStatus() {
-      try {
-        const response = await fetch('/rag/status');
-        const data = await response.json();
-        
-        console.log('[RAG Status]', data);
-        
-        if (!data.index_built || data.document_count === 0) {
-          console.warn('⚠️ RAG index not ready!');
-        }
-      } catch (error) {
-        console.error('RAG status check failed:', error);
-      }
-    }
-    
-    // Check RAG status on page load
-    checkRAGStatus();
+function getBadge(type) {
+  const t = (type || '').toUpperCase().replace(/ /g, '_');
+  return BADGE_MAP[t] || [type || 'EVENT', 'ev-default'];
+}
 
-    // Poll for Telegram notification status
-    async function checkTelegramStatus() {
-      try {
-          const response = await fetch('/api/telegram/status');
-          const data = await response.json();
-          
-          const statusEl = document.getElementById('telegram-status');
-          if (data.active) {
-              statusEl.textContent = '✅ Active';
-              statusEl.style.background = '#48bb78';
-          } else {
-              statusEl.textContent = '❌ Inactive';
-              statusEl.style.background = '#f56565';
-          }
-      } catch (error) {
-          console.error('Telegram status check failed:', error);
-      }
-    }
+function renderEvents(vlmResults, cvEvents) {
+  const feed = document.getElementById('eventsFeed');
+  const items = [];
 
-    // Check status on load
-    checkTelegramStatus();
-    setInterval(checkTelegramStatus, 30000); // Every 30s
-  </script>
+  // From VLM risks/anomalies
+  (vlmResults || []).forEach(v => {
+    (v.risks || []).forEach(r => {
+      items.push({ time: v._metadata?.timestamp || '00:00', type: r.type || 'RISK', desc: r.description || '' });
+    });
+    (v.persons || []).forEach(p => {
+      if (p.action) items.push({ time: v._metadata?.timestamp || '00:00', type: 'ENTER SCENE', desc: p.action + (p.location ? ` at ${p.location}` : '') });
+    });
+  });
 
-  <style>
-    .card {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-        padding: 20px;
-    }
+  // From CV events
+  (cvEvents || []).slice(0, 10).forEach(e => {
+    items.push({ time: (e.timestamp || 0).toFixed(2) + 's', type: e.event || e.motion_state || 'EVENT', desc: `Track #${e.track_id || '?'} · Zone ${e.zone || '?'}` });
+  });
 
-    .card-header h3 {
-        margin: 0;
-        color: #2d3748;
-    }
+  if (!items.length) {
+    feed.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0;">No events detected yet</div>';
+    return;
+  }
 
-    .btn-primary {
-        background: #667eea;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.3s;
-    }
+  feed.innerHTML = items.slice(0, 12).map(ev => {
+    const [badgeText, badgeClass] = getBadge(ev.type);
+    return `<div class="event-item">
+      <span class="event-time">${ev.time}</span>
+      <div>
+        <span class="event-badge ${badgeClass}">${badgeText}</span>
+        <div class="event-desc">${(ev.desc || '').slice(0, 90)}${ev.desc?.length > 90 ? '…' : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-    .btn-primary:hover {
-        background: #5a67d8;
+// ── RAG ──────────────────────────────────────────────────────
+function setQ(q) { document.getElementById('ragQ').value = q; }
+
+async function askRag() {
+  const q = document.getElementById('ragQ').value.trim();
+  if (!q) return;
+  const useGraph = document.getElementById('useGraph').checked;
+  const useVector = document.getElementById('useVector').checked;
+  const mode = useGraph && useVector ? 'hybrid' : useGraph ? 'graph' : 'json';
+  const th = document.getElementById('ragThinking');
+  const ans = document.getElementById('ragAnswer');
+  th.style.display = 'block'; ans.textContent = '';
+  try {
+    const ep = mode === 'hybrid' ? '/rag/hybrid' : mode === 'graph' ? '/rag/graph' : '/rag/search';
+    const r = await fetch(`${ep}?q=${encodeURIComponent(q)}&k=3`);
+    const d = await r.json();
+    th.style.display = 'none';
+    ans.textContent = d.answer || 'No answer returned.';
+  } catch(e) { th.style.display = 'none'; ans.textContent = '❌ ' + e.message; }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.activeElement.id === 'ragQ') askRag(); });
+
+// ── Knowledge Graph text ─────────────────────────────────────
+function renderKG(vlmResults) {
+  const kg = document.getElementById('kgContent');
+  const v = (vlmResults || [])[0];
+  if (!v) return;
+  const persons = (v.persons || []).map(p => `<b>${p.id}</b>: ${p.action || '?'}`).join('<br>');
+  const objects = (v.objects || []).map(o => `• ${o.type || o.class}`).join('  ');
+  const rels = (v.interactions || v.relationships || []).map(r => `${r.subject || r.from} → ${r.object || r.to}`).slice(0, 6).join('<br>');
+  kg.style.color = '#94a3b8'; kg.style.fontSize = '12px'; kg.style.lineHeight = '1.7';
+  kg.innerHTML = (persons ? `<b style="color:#60a5fa">Persons</b><br>${persons}<br><br>` : '') +
+                 (objects ? `<b style="color:#34d399">Objects</b><br>${objects}<br><br>` : '') +
+                 (rels    ? `<b style="color:#a78bfa">Relations</b><br>${rels}` : '');
+}
+
+// ── Master render ─────────────────────────────────────────────
+function renderAll(data) {
+  const frames = data.salient_frames || [];
+  const vlm    = data.vlm_results || [];
+  const ins    = data.insights || {};
+  const cvEvs  = data.events || [];
+
+  // Source Summary
+  const setText = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  setText('sumFrames', frames.length || '—');
+
+  let totalPersons = 0;
+  frames.forEach(f => { totalPersons += (Array.isArray(f.persons) ? f.persons.length : (f.persons || 0)); });
+  if (!totalPersons) vlm.forEach(v => { totalPersons += (v.persons || []).length; });
+  setText('sumPersons', totalPersons || '—');
+  setText('sumEvents', cvEvs.length || ins.event_count || '—');
+  setText('sumVlm', vlm.length || '—');
+
+  // Risk gauge
+  let riskScore = 21; let riskLabel = 'LOW';
+  if (ins.overall_risk === 'high') { riskScore = 75; riskLabel = 'HIGH'; }
+  else if (ins.overall_risk === 'medium') { riskScore = 48; riskLabel = 'MEDIUM'; }
+  else if (vlm[0]?.overall_risk_rating) { riskScore = Math.round(vlm[0].overall_risk_rating * 10); riskLabel = riskScore > 60 ? 'HIGH' : riskScore > 35 ? 'MEDIUM' : 'LOW'; }
+  drawGauge(riskScore, riskLabel);
+
+  // Risk factors (use VLM counts as proxy)
+  const totalRisks = (ins.risks || vlm.flatMap(v => v.risks || [])).length;
+  setText('rfFreq', totalRisks * 5 || '—');
+  setText('rfDur', frames.length * 5 || '—');
+  const zones = Object.keys(ins.zone_activity || {}).length;
+  setText('rfZone', zones ? zones * 6 : '—');
+
+  // Saliency chart
+  if (frames.length) drawSaliencyChart(frames);
+
+  // Frame grid
+  if (frames.length) populateFrames(frames);
+
+  // Live events
+  renderEvents(vlm, cvEvs);
+
+  // Knowledge graph panel
+  renderKG(vlm);
+}
+
+// ── Load existing data for a source ──────────────────────────
+async function loadDashboard(video) {
+  try {
+    const [statsR, framesR] = await Promise.all([
+      fetch(`/api/stats?video=${encodeURIComponent(video)}`),
+      fetch('/api/frames')
+    ]);
+    const stats  = await statsR.json();
+    const fdata  = await framesR.json();
+
+    const t = stats.totals || {};
+    const setText = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    setText('sumFrames', t.frames || '—');
+    setText('sumPersons', t.persons || '—');
+    setText('sumEvents', t.activities || '—');
+    setText('sumVlm', (fdata.frames || []).length || '—');
+
+    // Minimal gauge
+    drawGauge(21, 'LOW');
+    setText('rfFreq', '—'); setText('rfDur', '—'); setText('rfZone', '—');
+
+    // Frames
+    const mapped = (fdata.frames || []).map((f, i) => ({
+      image_url: f.image, timestamp: i * 0.1, persons: f.persons?.length || 0
+    }));
+    if (mapped.length) {
+      drawSaliencyChart(mapped);
+      populateFrames(mapped);
     }
-  </style>
+  } catch(e) { console.warn('loadDashboard error:', e); }
+}
+
+// ── Init ──────────────────────────────────────────────────────
+drawGauge(21, 'LOW');
+</script>
 </body>
 </html>
