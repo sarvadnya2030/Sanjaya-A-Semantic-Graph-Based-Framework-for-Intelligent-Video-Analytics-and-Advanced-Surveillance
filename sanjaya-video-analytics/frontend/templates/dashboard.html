@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanjaya — Video Intelligence</title>
+
+  <!-- Dark theme CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <!-- Bootstrap 5 (dark mode compatible) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+    body { background: radial-gradient(1200px 600px at 20% -10%, #1b2750 0%, #0a0f1c 40%, #080c16 100%); color: #e7ecff; min-height: 100vh; margin: 0; }
+
+    /* Nav */
+    .top-nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; background: rgba(18,24,43,0.85); border-bottom: 1px solid #1f2742; backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
+    .nav-brand h1 { font-size: 20px; font-weight: 800; letter-spacing: 1.5px; margin: 0; background: linear-gradient(90deg, #6ea8fe, #ffc36e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-brand span { font-size: 12px; color: #9fb0d7; letter-spacing: 0.5px; }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+
+    /* Buttons */
+    .btn-dark-primary { background: linear-gradient(135deg,#3d5afe,#6ea8fe); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+    .btn-dark-primary:hover { opacity: 0.85; }
+    .btn-dark-ghost { background: rgba(110,168,254,.08); color: #6ea8fe; border: 1px solid rgba(110,168,254,.25); border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; transition: border-color .2s; }
+    .btn-dark-ghost:hover { border-color: #6ea8fe; }
+
+    /* Layout */
+    .layout { display: grid; grid-template-columns: 280px 1fr 320px; gap: 16px; padding: 16px 20px; max-width: 1800px; margin: 0 auto; }
+    @media(max-width:1200px) { .layout { grid-template-columns: 1fr; } }
+
+    /* Cards */
+    .card-dark { background: #12182b; border: 1px solid #1f2742; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+    .card-dark h2 { font-size: 14px; font-weight: 700; color: #9fb0d7; text-transform: uppercase; letter-spacing: .6px; margin: 0 0 14px 0; }
+
+    /* KPI Grid */
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kpi { background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.1)); border: 1px solid #1f2742; border-radius: 8px; padding: 12px; text-align: center; }
+    .kpi-title { font-size: 10px; color: #9fb0d7; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; }
+    .kpi-value { font-size: 24px; font-weight: 800; color: #e7ecff; }
+    .kpi-sub { font-size: 11px; color: #9fb0d7; margin-top: 2px; }
+
+    /* Select */
+    .video-select { background: #1a2240; color: #e7ecff; border: 1px solid #2d3a5a; border-radius: 8px; padding: 8px 12px; font-size: 13px; width: 100%; appearance: none; cursor: pointer; }
+    .video-select:focus { outline: none; border-color: #6ea8fe; }
+
+    /* Frames */
+    .frame-canvas { width: 100%; border: 1px solid #1f2742; background: #000; border-radius: 8px; display: block; }
+
+    /* Heatmap */
+    .heatmap-canvas { width: 100%; height: 360px; border: 1px solid #1f2742; background: #0e1428; border-radius: 8px; display: block; }
+
+    /* Graph */
+    .graph-canvas { width: 100%; height: 420px; border: 1px solid #1f2742; border-radius: 8px; }
+
+    /* RAG */
+    .rag-textarea { background: #0d1326; color: #e7ecff; border: 1px solid #2d3a5a; border-radius: 8px; padding: 10px; font-size: 13px; width: 100%; resize: vertical; }
+    .rag-textarea:focus { outline: none; border-color: #6ea8fe; }
+    .rag-select { background: #1a2240; color: #e7ecff; border: 1px solid #2d3a5a; border-radius: 8px; padding: 7px 10px; font-size: 13px; cursor: pointer; }
+    .rag-answer { font-size: 15px; font-weight: 600; color: #e7ecff; line-height: 1.6; min-height: 40px; }
+    .typing { color: #6ea8fe; font-size: 13px; }
+    .rag-evidence .ev { border: 1px dashed #1f2742; padding: 8px; margin-top: 8px; background: #0b1224; border-radius: 8px; }
+    .rag-evidence pre { white-space: pre-wrap; font-size: 11px; color: #9fb0d7; margin: 0; }
+    .ev-head { font-size: 11px; font-weight: 600; color: #6ea8fe; margin-bottom: 4px; }
+
+    /* Chips */
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .chip { background: #111936; color: #cbd6f7; border: 1px solid #233058; border-radius: 16px; padding: 5px 10px; font-size: 12px; cursor: pointer; transition: border-color .2s; }
+    .chip:hover { border-color: #6ea8fe; color: #fff; }
+
+    /* List group */
+    .list-group-item { background: transparent !important; color: #e7ecff !important; border-color: #1f2742 !important; }
+    .badge.bg-primary-soft { background: rgba(110,168,254,.15); color: #6ea8fe; border: 1px solid rgba(110,168,254,.3); }
+
+    /* Session list */
+    .session-item { padding: 8px; border-left: 3px solid #3d5afe; background: #0d1326; border-radius: 4px; margin-bottom: 6px; font-size: 12px; }
+
+    /* Progress overlay */
+    #progressOverlay { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: rgba(8,12,22,0.88); padding: 28px 0; text-align: center; }
+
+    /* Posture cards */
+    .posture-cell { background: #0d1326; border: 1px solid #1f2742; border-radius: 8px; padding: 10px; text-align: center; }
+
+    /* Upload dropzone */
+    .dropzone { border: 2px dashed #2d3a5a; border-radius: 10px; padding: 24px; text-align: center; color: #9fb0d7; transition: border-color .2s; cursor: pointer; }
+    .dropzone:hover, .dropzone.active { border-color: #6ea8fe; color: #6ea8fe; }
+
+    /* Tabs */
+    .dark-tabs { display: flex; gap: 4px; border-bottom: 1px solid #1f2742; margin-bottom: 14px; }
+    .dark-tab { background: none; border: none; color: #9fb0d7; padding: 8px 14px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
+    .dark-tab.active { color: #6ea8fe; border-bottom-color: #6ea8fe; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0a0f1c; } ::-webkit-scrollbar-thumb { background: #2d3a5a; border-radius: 3px; }
+
+    /* Status banner */
+    #uploadStatus { position: fixed; bottom: 20px; right: 20px; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 9998; display: none; }
+    #uploadStatus.success { background: rgba(72,187,120,.15); border: 1px solid #48bb78; color: #68d391; }
+    #uploadStatus.error { background: rgba(229,62,62,.15); border: 1px solid #e53e3e; color: #fc8181; }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Nav ── -->
+<nav class="top-nav">
+  <div class="nav-brand">
+    <h1>SANJAYA</h1>
+    <span>Semantic Video Intelligence Platform</span>
+  </div>
+  <div class="nav-actions">
+    <select id="dashVideo" class="video-select" style="width:200px;">
+      <option value="">Select video…</option>
+    </select>
+    <button class="btn-dark-ghost" id="btnRefresh" title="Refresh data">⟳ Refresh</button>
+    <button class="btn-dark-ghost" id="btnExport" title="Export report">⬇ Export</button>
+    <button class="btn-dark-ghost" onclick="exportBackendReport('json')" title="Full JSON report">⬇ JSON</button>
+    <button class="btn-dark-ghost" onclick="exportBackendReport('csv')"  title="CSV events">⬇ CSV</button>
+    <input id="videoFile" type="file" accept="video/*" hidden onchange="handleFileSelected()">
+    <button class="btn-dark-ghost" onclick="document.getElementById('videoFile').click()">📤 Upload</button>
+    <button class="btn-dark-primary" onclick="uploadToBackend()">⚡ Analyze</button>
+  </div>
+</nav>
+
+<!-- ── Progress Overlay ── -->
+<div id="progressOverlay">
+  <div style="color:#e7ecff;font-size:15px;font-weight:700;margin-bottom:12px;" id="progressMsg">Initialising…</div>
+  <div style="width:55%;margin:0 auto;background:#1f2742;border-radius:999px;overflow:hidden;height:10px;">
+    <div id="progressBar" style="height:10px;background:linear-gradient(90deg,#3d5afe,#6ea8fe);border-radius:999px;width:0%;transition:width 0.4s ease;"></div>
+  </div>
+  <div style="color:#9fb0d7;font-size:12px;margin-top:8px;" id="progressPct">0%</div>
+  <div style="margin-top:14px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;" id="stageChips"></div>
+</div>
+
+<!-- ── Status Banner ── -->
+<div id="uploadStatus"></div>
+
+<!-- ── Upload panel (shown before video selected) ── -->
+<div id="uploadPanel" style="max-width:600px;margin:40px auto;padding:0 20px;">
+  <div class="card-dark" style="text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">🎥</div>
+    <h2 style="font-size:22px;color:#e7ecff;text-transform:none;letter-spacing:0;">Sanjaya Video Analytics</h2>
+    <p style="color:#9fb0d7;margin-bottom:20px;">Upload surveillance footage to generate intelligence insights using CV + VLM + Knowledge Graph</p>
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('videoFile').click()"
+         ondragover="event.preventDefault();this.classList.add('active')"
+         ondragleave="this.classList.remove('active')"
+         ondrop="handleDrop(event)">
+      <div style="font-size:32px;margin-bottom:8px;">📂</div>
+      <div style="font-weight:600;">Drop video here or click to browse</div>
+      <div style="font-size:12px;margin-top:6px;">MP4, AVI, MOV · up to 2GB</div>
+    </div>
+    <div id="selectedFilename" style="color:#6ea8fe;font-size:13px;margin-top:10px;"></div>
+    <button class="btn-dark-primary" style="margin-top:16px;padding:10px 28px;" onclick="uploadToBackend()">⚡ Analyze with Sanjaya</button>
+  </div>
+</div>
+
+<!-- ── Main Dashboard (hidden until video selected) ── -->
+<div id="mainDash" style="display:none;">
+  <div class="layout">
+
+    <!-- ── LEFT PANE ── -->
+    <aside>
+
+      <!-- KPIs -->
+      <div class="card-dark">
+        <h2>📊 Analytics Overview</h2>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="kpi-title">Persons</div><div class="kpi-value" id="kpiPersons">0</div></div>
+          <div class="kpi"><div class="kpi-title">Objects</div><div class="kpi-value" id="kpiObjects">0</div></div>
+          <div class="kpi"><div class="kpi-title">Classes</div><div class="kpi-value" id="kpiObjClasses">0</div></div>
+          <div class="kpi"><div class="kpi-title">Activities</div><div class="kpi-value" id="kpiActivities">0</div></div>
+          <div class="kpi"><div class="kpi-title">Frames</div><div class="kpi-value" id="kpiFrames">0</div></div>
+          <div class="kpi"><div class="kpi-title">Top Object</div><div class="kpi-value" style="font-size:15px;" id="kpiTopObject">–</div></div>
+        </div>
+      </div>
+
+      <!-- Top Objects -->
+      <div class="card-dark">
+        <h2>📦 Top Detected Objects</h2>
+        <ul class="list-group list-group-flush" id="topObjects">
+          <li class="list-group-item" style="color:#9fb0d7;font-size:13px;">No data yet</li>
+        </ul>
+      </div>
+
+      <!-- Activity Chips -->
+      <div class="card-dark">
+        <h2>⚡ Detected Activities</h2>
+        <div class="chips" id="activityChips">
+          <span class="chip" style="color:#9fb0d7;">Waiting…</span>
+        </div>
+      </div>
+
+      <!-- Posture Detection (shown after analysis) -->
+      <div class="card-dark" id="postureCard" style="display:none;">
+        <h2>🧍 Posture Detection</h2>
+        <div id="postureSummary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      </div>
+
+      <!-- Session History -->
+      <div class="card-dark">
+        <h2>📂 Session History</h2>
+        <div id="sessionList" style="max-height:260px;overflow-y:auto;">
+          <p style="color:#9fb0d7;font-size:13px;">No previous sessions</p>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── CENTER PANE ── -->
+    <main>
+
+      <!-- Salient Frames -->
+      <div class="card-dark">
+        <h2>🖼️ Salient Frames</h2>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          <div>
+            <div style="font-size:11px;color:#9fb0d7;margin-bottom:6px;">Frame 1</div>
+            <canvas id="frameCanvas0" class="frame-canvas" width="480" height="270"></canvas>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#9fb0d7;margin-bottom:6px;">Frame 2</div>
+            <canvas id="frameCanvas1" class="frame-canvas" width="480" height="270"></canvas>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#9fb0d7;margin-bottom:6px;">Frame 3</div>
+            <canvas id="frameCanvas2" class="frame-canvas" width="480" height="270"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Heatmap -->
+      <div class="card-dark">
+        <h2>🗺️ Zone Activity Heatmap</h2>
+        <canvas id="heatmapCanvas" class="heatmap-canvas"></canvas>
+      </div>
+
+      <!-- Knowledge Graph -->
+      <div class="card-dark">
+        <h2>🕸️ Knowledge Graph</h2>
+        <div id="cy" class="graph-canvas"></div>
+      </div>
+
+    </main>
+
+    <!-- ── RIGHT PANE ── -->
+    <aside>
+
+      <!-- RAG Query -->
+      <div class="card-dark">
+        <h2>🔍 Natural Language Query</h2>
+        <p style="color:#9fb0d7;font-size:12px;margin-bottom:10px;">Ask questions about your surveillance footage</p>
+
+        <textarea id="ragQ" class="rag-textarea" rows="3"
+          placeholder="Who was running?&#10;What happened in zone Z5?&#10;Describe suspicious behavior…"></textarea>
+
+        <div style="display:flex;gap:8px;margin:10px 0;align-items:center;">
+          <select id="ragMode" class="rag-select">
+            <option value="hybrid">Hybrid RAG</option>
+            <option value="graph">GraphRAG</option>
+            <option value="json">JSON RAG</option>
+          </select>
+          <button class="btn-dark-primary" style="flex:1;" id="ragGo">🔎 Ask</button>
+        </div>
+
+        <div id="promptChips" class="chips">
+          <span class="chip" data-prompt="Who was running in the video?">Who was running?</span>
+          <span class="chip" data-prompt="What happened in zone Z5?">Zone Z5</span>
+          <span class="chip" data-prompt="Describe suspicious behavior">Suspicious</span>
+          <span class="chip" data-prompt="What objects were detected?">Objects</span>
+          <span class="chip" data-prompt="Who was loitering?">Loitering</span>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="typing" id="ragThinking"></div>
+          <div class="rag-answer" id="ragAnswer" style="margin-top:8px;">Ask a question to get AI insights…</div>
+          <div class="rag-evidence mt-2" id="ragEvidence"></div>
+        </div>
+      </div>
+
+      <!-- Backend direct RAG (Graph reasoning) -->
+      <div class="card-dark">
+        <h2>🧠 Chain-of-Thought GraphRAG</h2>
+        <input type="text" id="graph-query" placeholder="Ask a reasoning question…"
+               style="width:100%;background:#0d1326;color:#e7ecff;border:1px solid #2d3a5a;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:10px;">
+        <div style="display:flex;gap:16px;margin-bottom:10px;font-size:13px;color:#9fb0d7;">
+          <label><input type="radio" name="rag-mode" value="graph" checked style="margin-right:5px;">GraphRAG</label>
+          <label><input type="radio" name="rag-mode" value="json" style="margin-right:5px;">JSON RAG</label>
+          <label><input type="radio" name="rag-mode" value="hybrid" style="margin-right:5px;">Hybrid</label>
+        </div>
+        <button onclick="askGraphQuestion()" class="btn-dark-primary" style="width:100%;padding:10px;">🔍 Reason with GraphRAG</button>
+
+        <div id="cot-display" style="margin-top:16px;display:none;">
+          <div style="font-size:13px;font-weight:700;color:#6ea8fe;margin-bottom:8px;">💭 Chain of Thought:</div>
+          <div id="cot-steps"></div>
+        </div>
+
+        <div id="graph-answer-display" style="margin-top:16px;display:none;">
+          <div style="font-size:13px;font-weight:700;color:#68d391;margin-bottom:6px;">✅ Answer:</div>
+          <div id="graph-answer-text" style="background:#0d1326;border:1px solid #1f2742;border-radius:8px;padding:12px;font-size:14px;line-height:1.6;color:#e7ecff;"></div>
+        </div>
+      </div>
+
+      <!-- Telegram Status -->
+      <div class="card-dark">
+        <h2>📱 Telegram Alerts</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:13px;color:#9fb0d7;">Risk events sent to Telegram bot</div>
+          <div id="telegram-status" style="padding:6px 14px;border-radius:16px;background:rgba(72,187,120,.15);border:1px solid #48bb78;color:#68d391;font-size:12px;font-weight:700;">
+            ✅ Active
+          </div>
+        </div>
+        <div id="notification-list" style="margin-top:12px;font-size:12px;color:#9fb0d7;">No notifications yet</div>
+      </div>
+
+    </aside>
+  </div><!-- /.layout -->
+</div><!-- /#mainDash -->
+
+
+<!-- ── Scripts ── -->
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.29.2/dist/cytoscape.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/graph.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const BACKEND = 'http://localhost:5000';
+
+// ── Socket.IO → connect to backend (port 5000) ─────────────────────────────
+const socket = io(BACKEND, { transports: ['websocket', 'polling'] });
+const STAGE_LABELS = {
+  upload:'📤 Upload', cleanup:'🧹 Cleanup', cv_pipeline:'🔍 CV Pipeline',
+  frames:'🖼 Frames', vlm:'🤖 VLM', neo4j:'🕸 Neo4j', rag:'📚 RAG',
+  done:'✅ Done', error:'❌ Error'
+};
+
+socket.on('progress', (d) => {
+  const overlay = document.getElementById('progressOverlay');
+  overlay.style.display = 'block';
+  document.getElementById('progressBar').style.width = d.pct + '%';
+  document.getElementById('progressPct').textContent = d.pct + '%';
+  document.getElementById('progressMsg').textContent = (STAGE_LABELS[d.stage] || d.stage) + ' — ' + d.msg;
+  const chips = document.getElementById('stageChips');
+  if (!chips.querySelector(`[data-stage="${d.stage}"]`)) {
+    const chip = document.createElement('span');
+    chip.dataset.stage = d.stage;
+    chip.textContent = STAGE_LABELS[d.stage] || d.stage;
+    chip.style.cssText = 'padding:4px 10px;border-radius:12px;background:#3d5afe;color:#fff;font-size:11px;';
+    chips.appendChild(chip);
+  }
+  if (d.pct >= 100 || d.stage === 'error') {
+    setTimeout(() => { overlay.style.display = 'none'; chips.innerHTML = ''; }, 1800);
+  }
+});
+
+// ── File selection ─────────────────────────────────────────────────────────
+function handleFileSelected() {
+  const file = document.getElementById('videoFile').files[0];
+  if (file) document.getElementById('selectedFilename').textContent = '📄 ' + file.name;
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('active');
+  const file = e.dataTransfer.files[0];
+  if (file) { document.getElementById('videoFile').files; document.getElementById('selectedFilename').textContent = '📄 ' + file.name; }
+  const dt = new DataTransfer(); dt.items.add(file);
+  document.getElementById('videoFile').files = dt.files;
+}
+
+// ── Upload to backend pipeline ─────────────────────────────────────────────
+async function uploadToBackend() {
+  const file = document.getElementById('videoFile').files[0];
+  if (!file) { showStatus('Please choose a video file', 'error'); return; }
+
+  document.getElementById('progressOverlay').style.display = 'block';
+  document.getElementById('progressMsg').textContent = '📤 Uploading…';
+  document.getElementById('progressBar').style.width = '2%';
+  document.getElementById('stageChips').innerHTML = '';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch(BACKEND + '/pipeline/upload', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Upload failed');
+
+    showStatus(`Done — ${data.salient_frames?.length || 0} salient frames · risk: ${data.insights?.overall_risk || 'low'}`, 'success');
+
+    // Show dashboard
+    document.getElementById('uploadPanel').style.display = 'none';
+    document.getElementById('mainDash').style.display = 'block';
+
+    // Posture summary
+    if (data.insights?.posture_summary) displayPostureSummary(data.insights.posture_summary);
+
+    // Load sessions
+    await loadSessions();
+
+    // Trigger stats refresh from local API (reading backend json_outputs)
+    const firstVideo = file.name;
+    await loadStats(firstVideo);
+    await loadFrames(firstVideo);
+    await loadHeatmap(firstVideo);
+    await loadGraph(firstVideo);
+
+    // Refresh video dropdown
+    await listVideos();
+
+  } catch(e) {
+    showStatus(e.message, 'error');
+    document.getElementById('progressOverlay').style.display = 'none';
+  }
+}
+
+// ── Export from backend ────────────────────────────────────────────────────
+function exportBackendReport(fmt) {
+  window.open(BACKEND + '/api/export/report?format=' + fmt, '_blank');
+}
+
+// ── Session history (from backend) ────────────────────────────────────────
+async function loadSessions() {
+  try {
+    const r = await fetch(BACKEND + '/api/sessions');
+    const d = await r.json();
+    const sessions = d.sessions || [];
+    const list = document.getElementById('sessionList');
+    if (!sessions.length) { list.innerHTML = '<p style="color:#9fb0d7;font-size:13px;">No previous sessions</p>'; return; }
+    list.innerHTML = sessions.map(s => {
+      const rc = s.risk_level === 'high' ? '#e53e3e' : s.risk_level === 'medium' ? '#f6ad55' : '#48bb78';
+      const time = new Date(s.timestamp).toLocaleTimeString();
+      const date = new Date(s.timestamp).toLocaleDateString();
+      return `<div class="session-item" style="border-left-color:${rc};">
+        <div style="font-weight:600;color:#e7ecff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.filename}">${s.filename}</div>
+        <div style="color:#9fb0d7;">${date} ${time}</div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <span style="color:${rc};font-weight:700;">${(s.risk_level||'low').toUpperCase()}</span>
+          <span style="color:#9fb0d7;">${s.event_count||0} events</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.warn('Sessions load failed:', e); }
+}
+
+// ── Posture summary ────────────────────────────────────────────────────────
+function displayPostureSummary(ps) {
+  if (!ps || !Object.keys(ps).length) return;
+  const icons = { standing:'🧍', crouching:'🤸', sitting:'🪑', running:'🏃', unknown:'❓' };
+  document.getElementById('postureSummary').innerHTML = Object.entries(ps).map(([k,v]) =>
+    `<div class="posture-cell"><div style="font-size:22px;">${icons[k]||'👤'}</div>
+     <div style="font-weight:700;font-size:18px;">${v}</div>
+     <div style="font-size:11px;color:#9fb0d7;">${k}</div></div>`
+  ).join('');
+  document.getElementById('postureCard').style.display = 'block';
+}
+
+// ── Status banner ──────────────────────────────────────────────────────────
+function showStatus(msg, type) {
+  const el = document.getElementById('uploadStatus');
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+// ── GraphRAG (direct to backend) ───────────────────────────────────────────
+async function askGraphQuestion() {
+  const query = document.getElementById('graph-query').value.trim();
+  const mode = document.querySelector('input[name="rag-mode"]:checked').value;
+  if (!query) { alert('Please enter a question'); return; }
+  const endpoint = mode === 'graph' ? '/rag/graph' : mode === 'hybrid' ? '/rag/hybrid' : '/rag/search';
+  const answerDiv = document.getElementById('graph-answer-display');
+  const answerText = document.getElementById('graph-answer-text');
+  answerDiv.style.display = 'block';
+  answerText.textContent = '🔄 Reasoning…';
+  try {
+    const r = await fetch(BACKEND + endpoint + '?q=' + encodeURIComponent(query));
+    const d = await r.json();
+    if (d.chain_of_thought?.length) {
+      let html = '';
+      d.chain_of_thought.forEach(s => {
+        html += `<div style="margin:10px 0;padding:12px;background:#0d1326;border-left:3px solid #3d5afe;border-radius:4px;">
+          <div style="font-weight:700;color:#6ea8fe;margin-bottom:6px;">Step ${s.step}: ${s.reasoning}</div>
+          <ul style="margin:0;padding-left:18px;color:#9fb0d7;">${(s.findings||[]).map(f=>`<li>${f}</li>`).join('')}</ul>
+        </div>`;
+      });
+      document.getElementById('cot-steps').innerHTML = html;
+      document.getElementById('cot-display').style.display = 'block';
+    } else {
+      document.getElementById('cot-display').style.display = 'none';
+    }
+    answerText.innerHTML = `<div style="line-height:1.7;">${d.answer || 'No answer returned'}</div>`;
+  } catch(e) {
+    answerText.innerHTML = `<span style="color:#fc8181;">❌ ${e.message}</span>`;
+  }
+}
+
+// ── Telegram status ────────────────────────────────────────────────────────
+async function checkTelegramStatus() {
+  try {
+    const r = await fetch('/api/telegram/status');
+    const d = await r.json();
+    const el = document.getElementById('telegram-status');
+    if (d.active) {
+      el.textContent = '✅ Active';
+      el.style.background = 'rgba(72,187,120,.15)';
+      el.style.borderColor = '#48bb78';
+      el.style.color = '#68d391';
+    } else {
+      el.textContent = '❌ Inactive';
+      el.style.background = 'rgba(229,62,62,.15)';
+      el.style.borderColor = '#e53e3e';
+      el.style.color = '#fc8181';
+    }
+  } catch(e) {}
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadSessions();
+  checkTelegramStatus();
+  setInterval(checkTelegramStatus, 30000);
+
+  // Show main dashboard if videos exist
+  const r = await fetch('/api/videos').catch(()=>({json:()=>({videos:[]})}));
+  const d = await r.json().catch(()=>({videos:[]}));
+  if ((d.videos||[]).length > 0) {
+    document.getElementById('uploadPanel').style.display = 'none';
+    document.getElementById('mainDash').style.display = 'block';
+  }
+});
+</script>
+
+</body>
+</html>

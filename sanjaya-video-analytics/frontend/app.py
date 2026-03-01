@@ -191,9 +191,13 @@ def rag_ask():
 
 @app.route("/api/telegram/status")
 def telegram_status():
-    """Check if Telegram bot is configured."""
-    is_active = telegram_notifier.bot_token != "8505865943:AAHkhf9i2rCBD250TbzeL3RW3JlwksR7J40"
-    return jsonify({"active": is_active})
+    """Check if Telegram bot is configured (reads backend config)."""
+    try:
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        is_active = bool(token) and token != "YOUR_BOT_TOKEN"
+        return jsonify({"active": is_active})
+    except Exception:
+        return jsonify({"active": False})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000, debug=True)
