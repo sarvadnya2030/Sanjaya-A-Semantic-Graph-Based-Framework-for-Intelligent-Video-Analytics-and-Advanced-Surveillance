@@ -32,6 +32,7 @@ sanjaya-video-analytics/backend/static/frames/
 sanjaya-video-analytics/backend/static/videos/
 sanjaya-video-analytics/backend/json_outputs/
 sanjaya-video-analytics/backend/__pycache__/
+json_outputs/
 
 # Logs
 *.log
