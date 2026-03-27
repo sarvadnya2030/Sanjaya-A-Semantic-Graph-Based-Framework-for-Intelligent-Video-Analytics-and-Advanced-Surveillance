@@ -492,6 +492,60 @@ def rebuild_rag():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route("/rag/ask", methods=["POST"])
+def rag_ask():
+    """Unified RAG question endpoint — routes to hybrid/graph/json based on mode."""
+    body     = request.get_json(force=True, silent=True) or {}
+    question = body.get("question", "").strip()
+    mode     = body.get("mode", "hybrid").lower()
+    if not question:
+        return jsonify({"error": "empty question"}), 400
+    try:
+        if mode == "graph":
+            result = graph_rag_engine.ask(question)
+            return jsonify({
+                "answer":     result.get("answer"),
+                "evidence":   result.get("evidence", []),
+                "confidence": result.get("confidence", 0.0),
+                "insights":   result.get("graph_facts", []),
+            })
+        elif mode == "json":
+            result = rag_engine.ask(question, k=5)
+            return jsonify({
+                "answer":     result["answer"],
+                "evidence":   result["evidence"],
+                "confidence": result["confidence"],
+                "insights":   [],
+            })
+        else:  # hybrid
+            g = graph_rag_engine.ask(question)
+            j = rag_engine.ask(question, k=3)
+            json_conf_str = j["confidence"].rstrip("%") if isinstance(j["confidence"], str) else str(j["confidence"])
+            try:
+                json_conf = float(json_conf_str) / 100
+            except Exception:
+                json_conf = 0.0
+            return jsonify({
+                "answer":     f"{g.get('answer', '')}\n\n{j['answer']}".strip(),
+                "evidence":   j["evidence"] + g.get("evidence", []),
+                "confidence": (g.get("confidence", 0) + json_conf) / 2,
+                "insights":   g.get("graph_facts", []),
+            })
+    except Exception as e:
+        log.error(f"[RAG/ask] {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/session/<path:video_id>")
+def get_session(video_id):
+    """Return stored session data for a video_id."""
+    sessions = _load_sessions()
+    for s in sessions:
+        if s.get("video_id") == video_id or s.get("filename") == video_id:
+            return jsonify(s)
+    return jsonify({"error": "session not found"}), 404
+
+
 # ─── SocketIO events ──────────────────────────────────────────────────────────
 @socketio.on('connect')
 def handle_connect():
